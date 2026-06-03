@@ -23,13 +23,22 @@ export function parseWhatsappSheet(
   dataRows: unknown[][],
   context: WhatsappParseContext = {},
 ): ParsedSheetRow[] {
-  const personelIdx = headerIndex(headers, "personel adi", "personel adı", "personel");
+  const personelIdx = headerIndex(
+    headers,
+    "personel adi",
+    "personel adı",
+    "personel",
+    "isim",
+    "ad soyad",
+    "ad soyadi",
+  );
   const ortIdx = headerIndex(
     headers,
     "ortalama whatsapp cevapsiz",
     "ortalama whatsapp cevapsız",
     "ortalama cevapsiz",
     "ortalama cevapsız",
+    "ortalama",
   );
   const totalIdx = headerIndex(
     headers,
@@ -37,7 +46,12 @@ export function parseWhatsappSheet(
     "total whatsapp cevapsız",
     "toplam whatsapp cevapsiz",
     "toplam whatsapp cevapsız",
+    "total",
+    "toplam",
   );
+  const effectivePersonelIdx = personelIdx >= 0 ? personelIdx : 0;
+  const effectiveOrtIdx = ortIdx >= 0 ? ortIdx : 3;
+  const effectiveTotalIdx = totalIdx >= 0 ? totalIdx : 4;
 
   const recordDate = context.sheetTab
     ? parseSheetTabPeriodDate(context.sheetTab)
@@ -47,12 +61,12 @@ export function parseWhatsappSheet(
   const out: ParsedSheetRow[] = [];
 
   for (const row of dataRows) {
-    const rawName = personelIdx >= 0 ? cellStr(row, personelIdx) : "";
+    const rawName = cellStr(row, effectivePersonelIdx);
     const personelName = sheetPersonelName(rawName);
     if (!personelName) continue;
 
-    const ortalama = ortIdx >= 0 ? cellStr(row, ortIdx) : "";
-    const toplam = totalIdx >= 0 ? cellStr(row, totalIdx) : "";
+    const ortalama = cellStr(row, effectiveOrtIdx);
+    const toplam = cellStr(row, effectiveTotalIdx);
 
     const ortNum = parseNumber(ortalama);
     const topNum = parseNumber(toplam);

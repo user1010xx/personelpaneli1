@@ -188,4 +188,18 @@ describe("parseWhatsappSheet", () => {
     expect(parsed[0].recordDate?.getFullYear()).toBe(2026);
     expect(parsed[0].rowData["Dönem"]).toContain("HAZİRAN");
   });
+
+  it("maps production WhatsApp A/D/E columns", () => {
+    const headers = ["İSİM", "WP ADET", "CİHAZ ADET", "ORTALAMA", "TOTAL"];
+    const parsed = parseWhatsappSheet(
+      headers,
+      [["Okan", "", "", "25", "50"]],
+      { sheetTab: "HAZİRAN 2026" },
+    );
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].personelName).toBe("Okan");
+    expect(parsed[0].rowData["Ortalama WhatsApp Cevapsız"]).toBe("25");
+    expect(parsed[0].rowData["Total WhatsApp Cevapsız"]).toBe("50");
+  });
 });

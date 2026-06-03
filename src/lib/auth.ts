@@ -109,12 +109,8 @@ export async function requireAdmin() {
   return user;
 }
 
-/** First deploy only — does not reset password on existing admin */
+/** Railway/env-backed admin — keeps configured admin usable on deploy */
 export async function ensureAdminSeed() {
-  if (process.env.ALLOW_ADMIN_SEED !== "true" && process.env.NODE_ENV === "production") {
-    return;
-  }
-
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME?.trim() || "Admin";
@@ -122,7 +118,19 @@ export async function ensureAdminSeed() {
   if (!email || !password) return;
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return;
+  if (existing) {
+    const passwordMatches = await verifyPassword(password, existing.passwordHash);
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        name,
+        role: "ADMIN",
+        active: true,
+        ...(passwordMatches ? {} : { passwordHash: await hashPassword(password) }),
+      },
+    });
+    return;
+  }
 
   await prisma.user.create({
     data: {

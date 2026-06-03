@@ -8,14 +8,43 @@ import { resolveSpreadsheetReadRange } from "@/lib/sheet-range";
 
 const CREATE_CHUNK = 500;
 
+function normalizePrivateKey(raw: string) {
+  let key = raw.trim();
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1);
+  }
+
+  key = key.replace(/\\n/g, "\n").trim();
+
+  if (!key.includes("BEGIN PRIVATE KEY")) {
+    try {
+      const decoded = Buffer.from(key, "base64").toString("utf8").trim();
+      if (decoded.includes("BEGIN PRIVATE KEY")) return decoded;
+    } catch {
+      // ignore and throw the friendly error below
+    }
+  }
+
+  if (!key.includes("BEGIN PRIVATE KEY") || !key.includes("END PRIVATE KEY")) {
+    throw new Error(
+      "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY formatı geçersiz. JSON içindeki private_key değerini BEGIN/END PRIVATE KEY satırlarıyla birlikte ekleyin ve \\n karakterlerini koruyun.",
+    );
+  }
+
+  return key;
+}
+
 function getServiceAccountCredentials() {
   if (!hasGoogleServiceAccount()) {
     throw new Error(googleServiceAccountError());
   }
 
   return {
-    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!,
-    private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!.trim(),
+    private_key: normalizePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY!),
   };
 }
 
@@ -58,6 +87,11 @@ export async function syncSheetModule(moduleKey: ModuleKey) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("DECODER routines") || msg.includes("unsupported")) {
+      throw new Error(
+        "Google Service Account private key okunamadı. Railway'de GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY değerini JSON içindeki private_key alanı olarak, BEGIN/END PRIVATE KEY dahil ve \\n karakterleri korunacak şekilde ekleyin.",
+      );
+    }
     if (msg.includes("Unable to parse range")) {
       throw new Error(
         `Google Sheets aralığı okunamadı (${range}). Sekme adını kontrol edin; Türkçe dosyalarda sekme genelde "Sayfa1" olur, "Sheet1" değil.`,

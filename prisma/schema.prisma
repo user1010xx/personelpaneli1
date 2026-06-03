@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ModuleKey {
+  PERSONEL
+  PUANTAJ
+  WHATSAPP
+  UYARI_KESINTI
+  UYE_ADEDI
+  CAGRI_SURECI
+}
+
+enum TrainingRecordType {
+  EGITIM
+  GERIBILDIRIM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  qualityScores      QualityScore[]
+  trainingFeedbacks  TrainingFeedback[]
+  excelUploads       ExcelUpload[]
+  activityLogs       ActivityLog[]
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName    String
+  userEmail   String
+  userRole    Role
+  action      String
+  description String
+  moduleKey   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
+}
+
+model SheetConfig {
+  id            String    @id @default(cuid())
+  moduleKey     ModuleKey @unique
+  spreadsheetId String
+  sheetName     String    @default("Sayfa1")
+  range         String?
+  headerRow     Int       @default(1)
+  updatedAt     DateTime  @updatedAt
+}
+
+model SyncBatch {
+  id        String    @id @default(cuid())
+  moduleKey ModuleKey
+  syncedAt  DateTime  @default(now())
+  rowCount  Int
+  rows      SheetDataRow[]
+
+  @@index([moduleKey, syncedAt])
+}
+
+model SheetDataRow {
+  id           String    @id @default(cuid())
+  moduleKey    ModuleKey
+  syncBatchId  String
+  syncBatch    SyncBatch @relation(fields: [syncBatchId], references: [id], onDelete: Cascade)
+  rowData      Json
+  recordDate   DateTime?
+  personelName String?
+  createdAt    DateTime  @default(now())
+
+  @@index([moduleKey, recordDate])
+  @@index([moduleKey, personelName])
+  @@index([moduleKey, createdAt])
+  @@index([syncBatchId])
+}
+
+model ExcelUpload {
+  id           String    @id @default(cuid())
+  moduleKey    ModuleKey
+  fileName     String
+  uploadedAt   DateTime  @default(now())
+  uploadedById String?
+  uploadedBy   User?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  rowCount     Int
+  periodFrom   DateTime?
+  periodTo     DateTime?
+  rows         ExcelDataRow[]
+
+  @@index([moduleKey, uploadedAt])
+}
+
+model ExcelDataRow {
+  id           String      @id @default(cuid())
+  moduleKey    ModuleKey
+  uploadId     String
+  upload       ExcelUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  rowData      Json
+  recordDate   DateTime?
+  personelName String?
+  createdAt    DateTime    @default(now())
+
+  @@index([moduleKey, recordDate])
+  @@index([moduleKey, personelName])
+  @@index([moduleKey, createdAt])
+  @@index([uploadId])
+}
+
+model RateLimitEntry {
+  key        String   @id
+  hits       Int      @default(0)
+  windowEnds DateTime
+
+  @@index([windowEnds])
+}
+
+model QualityScore {
+  id           String   @id @default(cuid())
+  personelName String
+  phone        String
+  score        Float
+  note         String?
+  recordDate   DateTime
+  createdById  String
+  createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([personelName, recordDate])
+  @@index([recordDate])
+}
+
+model TrainingFeedback {
+  id           String             @id @default(cuid())
+  personelName String
+  recordType   TrainingRecordType @default(EGITIM)
+  recordDate   DateTime
+  startTime    String
+  endTime      String
+  topic        String
+  trainer      String
+  createdById  String
+  createdBy    User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([personelName, recordDate])
+  @@index([recordDate])
+  @@index([recordType, recordDate])
+}

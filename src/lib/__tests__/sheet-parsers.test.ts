@@ -47,6 +47,29 @@ describe("parsePersonelSheet", () => {
       "Terfi Tarihi",
     ]);
   });
+
+  it("matches production personel sheet headers", () => {
+    const headers = [
+      "PERSONEL ADI",
+      "TG ADRESİ",
+      "GİRİŞ TARİHİ",
+      "Mail Adresi",
+      "GETİREN PERSONEL",
+      "TERFİ TARİHLERİ",
+    ];
+    const parsed = parsePersonelSheet(headers, [
+      ["Seda", "@sedaextra", "03.05.2026", "seda@example.com", "@Metin", "25.05.2026"],
+    ]);
+
+    expect(parsed[0].rowData).toEqual({
+      "Personel Adı": "Seda",
+      "Kullanıcı adı": "@sedaextra",
+      "İşe giriş Tarihi": "03.05.2026",
+      Mail: "seda@example.com",
+      Referans: "@Metin",
+      "Terfi Tarihi": "25.05.2026",
+    });
+  });
 });
 
 describe("parsePuantajCell", () => {

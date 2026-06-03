@@ -25,10 +25,28 @@ export function matchPersonelColumn(header: string): PersonelColumnLabel | null 
   const n = normalizeHeader(header);
   if (!n) return null;
   if (n.includes("personel adi") || n === "personel") return "Personel Adı";
-  if (n.includes("kullanici adi") || n.includes("kullanıcı adı")) return "Kullanıcı adı";
-  if (n.includes("ise giris") || n.includes("işe giriş")) return "İşe giriş Tarihi";
-  if (n === "mail" || n === "e posta" || n === "eposta" || n === "e-mail") return "Mail";
-  if (n.includes("referans")) return "Referans";
+  if (
+    n.includes("kullanici adi") ||
+    n.includes("kullanıcı adı") ||
+    n.includes("tg adres") ||
+    n.includes("telegram") ||
+    n.includes("tg user")
+  ) {
+    return "Kullanıcı adı";
+  }
+  if (n.includes("ise giris") || n.includes("işe giriş") || n.includes("giris tarihi")) {
+    return "İşe giriş Tarihi";
+  }
+  if (
+    n === "mail" ||
+    n.includes("mail adres") ||
+    n === "e posta" ||
+    n === "eposta" ||
+    n === "e-mail"
+  ) {
+    return "Mail";
+  }
+  if (n.includes("referans") || n.includes("getiren personel")) return "Referans";
   if (n.includes("terfi") || n.includes("tefi tarih")) return "Terfi Tarihi";
   return null;
 }
@@ -79,7 +97,7 @@ export function parsePersonelSheet(
   dataRows: unknown[][],
 ): ParsedSheetRow[] {
   const personelIdx = headerIndex(headers, "personel adi", "personel adı", "personel");
-  const girisIdx = headerIndex(headers, "ise giris tarihi", "işe giriş tarihi");
+  const girisIdx = headerIndex(headers, "ise giris tarihi", "işe giriş tarihi", "giris tarihi");
 
   return dataRows.map((row) => {
     const raw = recordFromHeaders(headers, row);

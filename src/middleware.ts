@@ -9,7 +9,9 @@ function isPublicPath(pathname: string) {
 }
 
 function isTrustedRequestSource(request: NextRequest) {
-  const expectedOrigin = request.nextUrl.origin;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  const expectedOrigin = host ? `${proto}://${host}` : request.nextUrl.origin;
   const origin = request.headers.get("origin");
   if (origin) return origin === expectedOrigin;
 

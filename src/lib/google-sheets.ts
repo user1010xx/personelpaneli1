@@ -92,6 +92,15 @@ export async function syncSheetModule(moduleKey: ModuleKey) {
         "Google Service Account private key okunamadı. Railway'de GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY değerini JSON içindeki private_key alanı olarak, BEGIN/END PRIVATE KEY dahil ve \\n karakterleri korunacak şekilde ekleyin.",
       );
     }
+    if (
+      msg.includes("This operation is not supported for this document") ||
+      msg.includes("Office file") ||
+      msg.includes("document is not supported")
+    ) {
+      throw new Error(
+        "Bu dosya Google Sheets formatında değil; Office/Excel dosyası olarak duruyor. Dosyayı Google Drive'da açıp Dosya > Google E-Tablolar olarak kaydet seçeneğiyle Google Sheets'e dönüştürün, oluşan yeni Google Sheet linkini panelde kullanın ve service account mailiyle paylaşın.",
+      );
+    }
     if (msg.includes("Unable to parse range")) {
       throw new Error(
         `Google Sheets aralığı okunamadı (${range}). Sekme adını kontrol edin; Türkçe dosyalarda sekme genelde "Sayfa1" olur, "Sheet1" değil.`,

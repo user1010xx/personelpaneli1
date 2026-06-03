@@ -22,7 +22,7 @@ export function toDateRange(from: Date | null, to: Date | null) {
 
 /** Ay/yıl aralığıyla filtrelenmeyen modüller (liste tamamını gösterir) */
 export function moduleUsesDateRangeFilter(moduleKey: string) {
-  return moduleKey !== "WHATSAPP" && moduleKey !== "PERSONEL" && moduleKey !== "UYARI_KESINTI";
+  return moduleKey !== "PERSONEL" && moduleKey !== "UYARI_KESINTI";
 }
 
 /** Sheet/Excel satır tarih filtresi (recordDate veya createdAt fallback) */

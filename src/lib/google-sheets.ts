@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import type { ModuleKey } from "@prisma/client";
+import { startOfMonth } from "date-fns";
 import { prisma } from "@/lib/db";
 import { pruneArchivedModuleRows } from "@/lib/archive";
 import { googleServiceAccountError, hasGoogleServiceAccount } from "@/lib/google-env";
@@ -129,6 +130,10 @@ export async function syncSheetModule(moduleKey: ModuleKey) {
     sourceRows.map((item) => item.row),
     { sheetTab: tabTitle },
   );
+  const whatsappPeriod = moduleKey === "WHATSAPP"
+    ? parsed.find((row) => row.recordDate)?.recordDate
+    : null;
+  const whatsappPeriodFrom = whatsappPeriod ? startOfMonth(whatsappPeriod) : null;
 
   const result = await prisma.$transaction(async (tx) => {
     const batch = await tx.syncBatch.create({
@@ -150,12 +155,28 @@ export async function syncSheetModule(moduleKey: ModuleKey) {
       }
     }
 
-    await tx.sheetDataRow.deleteMany({
-      where: { moduleKey, syncBatchId: { not: batch.id } },
-    });
-    await tx.syncBatch.deleteMany({
-      where: { moduleKey, id: { not: batch.id } },
-    });
+    if (moduleKey === "WHATSAPP" && whatsappPeriodFrom) {
+      const oldBatches = await tx.syncBatch.findMany({
+        where: {
+          moduleKey,
+          id: { not: batch.id },
+          rows: { some: { recordDate: whatsappPeriodFrom } },
+        },
+        select: { id: true },
+      });
+      if (oldBatches.length > 0) {
+        await tx.syncBatch.deleteMany({
+          where: { id: { in: oldBatches.map((oldBatch) => oldBatch.id) } },
+        });
+      }
+    } else {
+      await tx.sheetDataRow.deleteMany({
+        where: { moduleKey, syncBatchId: { not: batch.id } },
+      });
+      await tx.syncBatch.deleteMany({
+        where: { moduleKey, id: { not: batch.id } },
+      });
+    }
 
     return {
       batchId: batch.id,

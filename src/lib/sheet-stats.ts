@@ -46,10 +46,17 @@ export function computeSheetModuleStats(
 ): SheetModuleStats {
   const periodRange = getPeriodRange(period, anchor);
   const range = customRange ?? periodRange;
-  const filtered = filterByPeriod(rows, period, anchor);
-  const base = customRange
-    ? computeStatsForRange(rows, period, customRange)
-    : computeModuleStats(rows, period, anchor);
+  const filtered =
+    moduleKey === "UYARI_KESINTI" ? rows : filterByPeriod(rows, period, anchor);
+  const base =
+    moduleKey === "UYARI_KESINTI"
+      ? {
+          ...computeModuleStats(rows, period, anchor),
+          recordCount: rows.length,
+        }
+      : customRange
+        ? computeStatsForRange(rows, period, customRange)
+        : computeModuleStats(rows, period, anchor);
 
   if (moduleKey === "PUANTAJ") {
     const puantajRows = rows.map((r) => ({

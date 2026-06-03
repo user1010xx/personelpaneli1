@@ -125,7 +125,10 @@ export async function GET(
           ...(filters.length ? { AND: filters } : {}),
         },
         include: { syncBatch: true },
-        orderBy: [{ recordDate: "desc" }, { createdAt: "desc" }],
+        orderBy:
+          moduleKey === "UYARI_KESINTI"
+            ? [{ sourceRow: "asc" }, { createdAt: "asc" }]
+            : [{ recordDate: "desc" }, { createdAt: "desc" }],
         take: EXPORT_ROW_LIMIT,
       });
 

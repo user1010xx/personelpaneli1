@@ -54,16 +54,17 @@ export function SheetModulePage({
   const isPuantaj = moduleKey === "PUANTAJ";
   const isWhatsapp = moduleKey === "WHATSAPP";
   const isPersonel = moduleKey === "PERSONEL";
+  const isUyariKesinti = moduleKey === "UYARI_KESINTI";
   const showDateColumn =
-    moduleKey !== "WHATSAPP" && moduleKey !== "PERSONEL" && !isPuantaj;
+    moduleKey !== "WHATSAPP" && moduleKey !== "PERSONEL" && !isPuantaj && !isUyariKesinti;
   const defaultPeriod = currentMonthYear();
   const [filters, setFilters] = usePersistedPageState(`sheet-${moduleKey}`, {
-    period: (isPuantaj ? "monthly" : "daily") as Period,
+    period: (isPuantaj || isUyariKesinti ? "monthly" : "daily") as Period,
     search: "",
     month: defaultPeriod.month,
     year: defaultPeriod.year,
-    sortBy: isPuantaj || isPersonel ? "personel" : "date",
-    sortDir: "desc" as "asc" | "desc",
+    sortBy: isPuantaj || isPersonel ? "personel" : isUyariKesinti ? "sheet" : "date",
+    sortDir: (isUyariKesinti ? "asc" : "desc") as "asc" | "desc",
     page: 1,
   });
   const { period, search, sortBy, sortDir, page } = filters;
@@ -81,7 +82,9 @@ export function SheetModulePage({
       ? new Set(["personel", "mesai", "izin"])
       : isPersonel
         ? new Set(["personel"])
-        : new Set(["date", "personel"].filter((k) => k !== "date" || showDateColumn));
+        : isUyariKesinti
+          ? new Set(["personel"])
+          : new Set(["date", "personel"].filter((k) => k !== "date" || showDateColumn));
 
     if (apiKeys.has(key)) {
       setClientSortCol(null);
@@ -110,12 +113,12 @@ export function SheetModulePage({
       page: String(page),
       pageSize: "50",
     });
-    if (!isPersonel && !isWhatsapp) {
+    if (!isPersonel && !isWhatsapp && !isUyariKesinti) {
       if (from) p.set("from", from);
       if (to) p.set("to", to);
     }
     return p;
-  }, [search, from, to, sortBy, sortDir, period, page, isPersonel, isWhatsapp]);
+  }, [search, from, to, sortBy, sortDir, period, page, isPersonel, isWhatsapp, isUyariKesinti]);
 
   const { rows, total, stats, statsTruncated, loading, refreshing, error } =
     useModuleData(`/api/data/${moduleKey}`, params);
@@ -282,9 +285,11 @@ export function SheetModulePage({
             ? puantajSortOptions
             : isPersonel
               ? [{ value: "personel", label: "Personele göre" }]
+              : isUyariKesinti
+                ? [{ value: "sheet", label: "Sheet sırasına göre" }]
               : undefined
         }
-        hideDateRange={isPersonel || isWhatsapp}
+        hideDateRange={isPersonel || isWhatsapp || isUyariKesinti}
       />
 
       <div className="data-table-wrap">
@@ -299,6 +304,8 @@ export function SheetModulePage({
                 ? "Sheet sekmesindeki güncel personel özetleri listelenir (ortalama ve toplam cevapsız)."
                 : isPersonel
                   ? "Tüm personel listelenir; işe giriş tarihi yalnızca bilgi sütunudur."
+                  : isUyariKesinti
+                    ? "Google Sheets'teki güncel kayıtlar sheet sırasıyla listelenir; tarih yalnızca bilgi sütunudur."
                   : "Filtrelere göre güncellenir"}
           </p>
         </div>

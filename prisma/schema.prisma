@@ -120,11 +120,13 @@ model SheetDataRow {
   rowData      Json
   recordDate   DateTime?
   personelName String?
+  sourceRow    Int?
   createdAt    DateTime  @default(now())
 
   @@index([moduleKey, recordDate])
   @@index([moduleKey, personelName])
   @@index([moduleKey, createdAt])
+  @@index([moduleKey, sourceRow])
   @@index([syncBatchId])
 }
 

@@ -197,7 +197,10 @@ export async function GET(
         where,
         select: { recordDate: true, createdAt: true, personelName: true, rowData: true },
         take: STATS_ROW_LIMIT,
-        orderBy: { recordDate: "desc" },
+        orderBy:
+          moduleKey === "UYARI_KESINTI"
+            ? [{ sourceRow: "asc" }, { createdAt: "asc" }]
+            : { recordDate: "desc" },
       });
 
       const statRows = allForStats.map((r) => ({
@@ -226,9 +229,11 @@ export async function GET(
         where,
         include: { syncBatch: { select: { syncedAt: true } } },
         orderBy:
-          sortBy === "personel"
-            ? { personelName: sortDir }
-            : [{ recordDate: sortDir }, { createdAt: sortDir }],
+          moduleKey === "UYARI_KESINTI"
+            ? [{ sourceRow: "asc" }, { createdAt: "asc" }]
+            : sortBy === "personel"
+              ? { personelName: sortDir }
+              : [{ recordDate: sortDir }, { createdAt: sortDir }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -256,7 +261,10 @@ export async function GET(
       where,
       select: { recordDate: true, createdAt: true, personelName: true, rowData: true },
       take: STATS_ROW_LIMIT,
-      orderBy: { recordDate: "desc" },
+      orderBy:
+        moduleKey === "UYARI_KESINTI"
+          ? [{ sourceRow: "asc" }, { createdAt: "asc" }]
+          : { recordDate: "desc" },
     });
 
     const statRows = allForStats.map((r) => ({

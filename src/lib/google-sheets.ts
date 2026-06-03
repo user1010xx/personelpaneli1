@@ -112,14 +112,23 @@ export async function syncSheetModule(moduleKey: ModuleKey) {
   const values = response.data.values ?? [];
   const headerIndex = Math.max(config.headerRow - 1, 0);
   const headers = (values[headerIndex] ?? []).map((h) => String(h ?? ""));
-  const dataRows =
+  const sourceRows =
     values.length === 0
       ? []
-      : values.slice(headerIndex + 1).filter((row) =>
-          row.some((cell) => String(cell ?? "").trim() !== ""),
-        );
+      : values
+          .slice(headerIndex + 1)
+          .map((row, index) => ({
+            row,
+            sourceRow: headerIndex + index + 2,
+          }))
+          .filter(({ row }) => row.some((cell) => String(cell ?? "").trim() !== ""));
 
-  const parsed = parseSheetRows(moduleKey, headers, dataRows, { sheetTab: tabTitle });
+  const parsed = parseSheetRows(
+    moduleKey,
+    headers,
+    sourceRows.map((item) => item.row),
+    { sheetTab: tabTitle },
+  );
 
   const result = await prisma.$transaction(async (tx) => {
     const batch = await tx.syncBatch.create({
@@ -127,12 +136,13 @@ export async function syncSheetModule(moduleKey: ModuleKey) {
     });
 
     if (parsed.length > 0) {
-      const rows = parsed.map((row) => ({
+      const rows = parsed.map((row, index) => ({
         moduleKey,
         syncBatchId: batch.id,
         rowData: row.rowData,
         recordDate: row.recordDate,
         personelName: row.personelName,
+        sourceRow: sourceRows[index]?.sourceRow ?? null,
       }));
 
       for (let i = 0; i < rows.length; i += CREATE_CHUNK) {

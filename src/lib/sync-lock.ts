@@ -20,12 +20,21 @@ export async function withModuleLock<T>(moduleKey: string, fn: () => Promise<T>)
   }
   localLocks.add(moduleKey);
   const id = lockId(moduleKey);
+  let locked = false;
 
   try {
-    await prisma.$executeRaw`SELECT pg_advisory_lock(${id})`;
+    const result = await prisma.$queryRaw<{ locked: boolean }[]>`
+      SELECT pg_try_advisory_lock(${id}) AS locked
+    `;
+    locked = Boolean(result[0]?.locked);
+    if (!locked) {
+      throw new Error("Bu modül için senkronizasyon zaten çalışıyor. Lütfen bekleyin.");
+    }
     return await fn();
   } finally {
-    await prisma.$executeRaw`SELECT pg_advisory_unlock(${id})`;
+    if (locked) {
+      await prisma.$executeRaw`SELECT pg_advisory_unlock(${id})`;
+    }
     localLocks.delete(moduleKey);
   }
 }

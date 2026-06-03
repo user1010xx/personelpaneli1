@@ -1,7 +1,7 @@
 import type { ModuleKey } from "@prisma/client";
 
 export type ModuleMeta = {
-  key: ModuleKey | "DASHBOARD" | "KALITE" | "EGITIM" | "USERS" | "LOG";
+  key: ModuleKey | "DASHBOARD" | "KALITE" | "EGITIM" | "USERS" | "LOG" | "PERSONEL_ALIAS";
   title: string;
   href: string;
   description: string;
@@ -89,6 +89,14 @@ export const NAV_MODULES: ModuleMeta[] = [
     description: "Kullanıcı ve Google Sheets bağlantıları",
     source: "admin",
     icon: "shield",
+  },
+  {
+    key: "PERSONEL_ALIAS",
+    title: "Personel Eşleştirme",
+    href: "/personel-eslestirme",
+    description: "Farklı yazılan personel isimlerini tek kişide birleştir",
+    source: "admin",
+    icon: "users",
   },
   {
     key: "LOG",

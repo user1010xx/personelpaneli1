@@ -2,20 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  dedupePanelRequest,
+  eventAffectsPrefix,
   getPanelCache,
-  getPanelCacheAge,
   invalidatePanelCache,
+  isPanelCacheStale,
   PANEL_DATA_UPDATED_EVENT,
-  PANEL_STALE_REVALIDATE_MS,
   panelCacheKey,
   setPanelCache,
 } from "@/lib/panel-cache";
 
-const STALE_REVALIDATE_MS = PANEL_STALE_REVALIDATE_MS;
-
 type Options = {
   debounceMs?: number;
   enabled?: boolean;
+  refetchOnPanelUpdate?: boolean;
 };
 
 export function usePanelFetch<T>(
@@ -25,6 +25,7 @@ export function usePanelFetch<T>(
 ) {
   const debounceMs = options?.debounceMs ?? 0;
   const enabled = options?.enabled ?? true;
+  const refetchOnPanelUpdate = options?.refetchOnPanelUpdate ?? true;
   const query = params.toString();
   const key = panelCacheKey(url, query);
   const cached = getPanelCache<T>(key);
@@ -48,18 +49,19 @@ export function usePanelFetch<T>(
       else setRefreshing(true);
 
       try {
-        const res = await fetch(query ? `${url}?${query}` : url, {
-          signal: controller.signal,
-          credentials: "include",
-          cache: opts?.force ? "no-store" : "default",
+        const requestKey = opts?.force ? `${key}#force` : key;
+        const json = await dedupePanelRequest(requestKey, async () => {
+          const res = await fetch(query ? `${url}?${query}` : url, {
+            credentials: "include",
+            cache: opts?.force ? "no-store" : "default",
+          });
+          const payload = (await res.json()) as T & { error?: string };
+          if (!res.ok) {
+            throw new Error(payload.error ?? "Veri yüklenemedi");
+          }
+          return payload;
         });
-        const json = (await res.json()) as T & { error?: string };
         if (controller.signal.aborted) return;
-
-        if (!res.ok) {
-          setError(json.error ?? "Veri yüklenemedi");
-          return;
-        }
 
         setError(null);
         setData(json);
@@ -67,7 +69,7 @@ export function usePanelFetch<T>(
       } catch (e) {
         if (controller.signal.aborted) return;
         if (e instanceof DOMException && e.name === "AbortError") return;
-        setError("Bağlantı hatası — tekrar deneyin");
+        setError(e instanceof Error ? e.message : "Bağlantı hatası — tekrar deneyin");
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -85,8 +87,7 @@ export function usePanelFetch<T>(
     if (hit) {
       setData(hit);
       setLoading(false);
-      const age = getPanelCacheAge(key);
-      if (age !== null && age > STALE_REVALIDATE_MS) {
+      if (isPanelCacheStale(key)) {
         void reload({ silent: true });
       }
       return;
@@ -102,11 +103,15 @@ export function usePanelFetch<T>(
   }, [debounceMs, enabled, key, reload]);
 
   useEffect(() => {
-    if (!enabled) return;
-    const onUpdated = () => void reload({ silent: true, force: true });
+    if (!enabled || !refetchOnPanelUpdate) return;
+    const onUpdated = (event: Event) => {
+      if (eventAffectsPrefix(event, url)) {
+        void reload({ silent: true, force: true });
+      }
+    };
     window.addEventListener(PANEL_DATA_UPDATED_EVENT, onUpdated);
     return () => window.removeEventListener(PANEL_DATA_UPDATED_EVENT, onUpdated);
-  }, [enabled, reload]);
+  }, [enabled, refetchOnPanelUpdate, reload, url]);
 
   const invalidate = useCallback(() => {
     invalidatePanelCache(url);

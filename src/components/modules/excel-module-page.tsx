@@ -8,7 +8,7 @@ import { useModuleData } from "@/hooks/use-module-data";
 import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { useMonthYearRange } from "@/hooks/use-month-year-range";
 import { currentMonthYear } from "@/lib/month-year";
-import { invalidateDataCaches } from "@/lib/panel-cache";
+import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
 import { nextSortDir } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,15 @@ type Props = {
   moduleKey: ModuleKey;
   title: string;
   description: string;
+  canManage?: boolean;
 };
 
-export function ExcelModulePage({ moduleKey, title, description }: Props) {
+const DISPLAY_COLUMNS: Partial<Record<ModuleKey, string[]>> = {
+  UYE_ADEDI: ["Personel Adı", "Üye Adedi", "İlk Yat Adedi", "Tarih"],
+  CAGRI_SURECI: ["Personel Adı", "Arama Adedi", "Konuşma Süresi", "Tarih"],
+};
+
+export function ExcelModulePage({ moduleKey, title, description, canManage = false }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -93,7 +99,7 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
     return p;
   }, [search, from, to, sortBy, sortDir, period, page]);
 
-  const { rows, total, stats, loading, refreshing, invalidate } = useModuleData(
+  const { rows, total, stats, loading, refreshing } = useModuleData(
     `/api/data/${moduleKey}`,
     params,
   );
@@ -105,6 +111,7 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
       if (key === "date") return row.recordDate ?? row.createdAt;
       if (key === "personel") return row.personelName ?? "";
       if (key === "fileName") return row.fileName ?? "";
+      if (key === "Tarih") return row.recordDate ?? row.data?.Tarih ?? row.createdAt;
       return row.data?.[key] ?? "";
     });
   }, [typedRows, clientSortCol, clientSort]);
@@ -143,15 +150,13 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
       new Date(periodFrom).getMonth() + 1,
       new Date(periodFrom).getFullYear(),
     );
-    invalidateDataCaches();
-    invalidate();
+    invalidateModuleDataCaches(moduleKey);
     setUploadsRefreshKey((k) => k + 1);
   }
 
   function onUploadDeleted() {
     setMessage("Dosya ve ilişkili veriler silindi.");
-    invalidateDataCaches();
-    invalidate();
+    invalidateModuleDataCaches(moduleKey);
     setUploadsRefreshKey((k) => k + 1);
   }
 
@@ -164,9 +169,11 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
     window.open(`/api/data/${moduleKey}/export?${p}`, "_blank");
   }
 
-  const columns = typedRows.length
-    ? Array.from(new Set(typedRows.flatMap((row) => Object.keys(row.data ?? {})))).slice(0, 12)
-    : [];
+  const fixedColumns = DISPLAY_COLUMNS[moduleKey];
+  const columns = fixedColumns
+    ?? (typedRows.length
+      ? Array.from(new Set(typedRows.flatMap((row) => Object.keys(row.data ?? {})))).slice(0, 12)
+      : []);
 
   const showSkeleton = loading && typedRows.length === 0;
 
@@ -177,21 +184,25 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
         description={`${description} · ${periodLabel}`}
         actions={
           <>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onFilePicked(file);
-                e.target.value = "";
-              }}
-            />
-            <Button onClick={() => fileRef.current?.click()} disabled={uploading}>
-              <Upload className={`h-4 w-4 ${uploading ? "animate-pulse" : ""}`} />
-              Excel Yükle
-            </Button>
+            {canManage ? (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,.xlsm,.xls,.xlsb"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) onFilePicked(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button onClick={() => fileRef.current?.click()} disabled={uploading}>
+                  <Upload className={`h-4 w-4 ${uploading ? "animate-pulse" : ""}`} />
+                  Excel Yükle
+                </Button>
+              </>
+            ) : null}
             <Button variant="secondary" onClick={exportExcel}>
               <Download className="h-4 w-4" />
               Excel İndir
@@ -210,11 +221,13 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
         </div>
       ) : null}
 
-      <ExcelUploadsPanel
-        moduleKey={moduleKey}
-        refreshKey={uploadsRefreshKey}
-        onDeleted={onUploadDeleted}
-      />
+      {canManage ? (
+        <ExcelUploadsPanel
+          moduleKey={moduleKey}
+          refreshKey={uploadsRefreshKey}
+          onDeleted={onUploadDeleted}
+        />
+      ) : null}
 
       <PeriodStatsBar stats={stats} activePeriod={period} onPeriodChange={(p) => patchFilters({ period: p })} />
       <DataFilters
@@ -237,35 +250,39 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
-                <SortableTh
-                  label="Tarih"
-                  sortKey="date"
-                  activeKey={headerSortKey}
-                  dir={headerSortDir}
-                  onSort={handleColumnSort}
-                  className="px-5 py-3.5"
-                />
-                <SortableTh
-                  label="Personel"
-                  sortKey="personel"
-                  activeKey={headerSortKey}
-                  dir={headerSortDir}
-                  onSort={handleColumnSort}
-                  className="px-5 py-3.5"
-                />
-                <SortableTh
-                  label="Dosya"
-                  sortKey="fileName"
-                  activeKey={headerSortKey}
-                  dir={headerSortDir}
-                  onSort={handleColumnSort}
-                  className="px-5 py-3.5"
-                />
+                {!fixedColumns ? (
+                  <>
+                    <SortableTh
+                      label="Tarih"
+                      sortKey="date"
+                      activeKey={headerSortKey}
+                      dir={headerSortDir}
+                      onSort={handleColumnSort}
+                      className="px-5 py-3.5"
+                    />
+                    <SortableTh
+                      label="Personel"
+                      sortKey="personel"
+                      activeKey={headerSortKey}
+                      dir={headerSortDir}
+                      onSort={handleColumnSort}
+                      className="px-5 py-3.5"
+                    />
+                    <SortableTh
+                      label="Dosya"
+                      sortKey="fileName"
+                      activeKey={headerSortKey}
+                      dir={headerSortDir}
+                      onSort={handleColumnSort}
+                      className="px-5 py-3.5"
+                    />
+                  </>
+                ) : null}
                 {columns.map((col) => (
                   <SortableTh
                     key={col}
                     label={col}
-                    sortKey={col}
+                    sortKey={col === "Personel Adı" ? "personel" : col === "Tarih" ? "date" : col}
                     activeKey={headerSortKey}
                     dir={headerSortDir}
                     onSort={handleColumnSort}
@@ -278,32 +295,53 @@ export function ExcelModulePage({ moduleKey, title, description }: Props) {
               {showSkeleton ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={columns.length + 3} className="px-5 py-3">
+                    <td colSpan={columns.length + (fixedColumns ? 0 : 3)} className="px-5 py-3">
                       <div className="h-8 animate-pulse rounded-lg bg-slate-100" />
                     </td>
                   </tr>
                 ))
               ) : displayRows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + 3} className="px-5 py-12 text-center text-slate-500">
+                  <td
+                    colSpan={columns.length + (fixedColumns ? 0 : 3)}
+                    className="px-5 py-12 text-center text-slate-500"
+                  >
                     Kayıt bulunamadı. Excel dosyası yükleyin.
                   </td>
                 </tr>
               ) : (
                 displayRows.map((row) => (
                   <tr key={row.id} className="transition hover:bg-brand-50/30">
-                    <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">
-                      {row.recordDate
-                        ? new Date(row.recordDate).toLocaleDateString("tr-TR")
-                        : new Date(row.createdAt).toLocaleDateString("tr-TR")}
-                    </td>
-                    <td className="px-5 py-3.5 font-semibold text-slate-900">
-                      {row.personelName ?? "-"}
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-500">{row.fileName ?? "-"}</td>
+                    {!fixedColumns ? (
+                      <>
+                        <td className="whitespace-nowrap px-5 py-3.5 text-slate-600">
+                          {row.recordDate
+                            ? new Date(row.recordDate).toLocaleDateString("tr-TR")
+                            : new Date(row.createdAt).toLocaleDateString("tr-TR")}
+                        </td>
+                        <td className="px-5 py-3.5 font-semibold text-slate-900">
+                          {row.personelName ?? "-"}
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-500">{row.fileName ?? "-"}</td>
+                      </>
+                    ) : null}
                     {columns.map((col) => (
-                      <td key={col} className="max-w-[220px] truncate px-5 py-3.5 text-slate-600">
-                        {row.data?.[col] ?? ""}
+                      <td
+                        key={col}
+                        className={
+                          col === "Personel Adı"
+                            ? "px-5 py-3.5 font-semibold text-slate-900"
+                            : "max-w-[220px] truncate px-5 py-3.5 text-slate-600"
+                        }
+                      >
+                        {col === "Personel Adı"
+                          ? row.personelName ?? row.data?.[col] ?? "-"
+                          : col === "Tarih"
+                            ? row.data?.Tarih
+                              ?? (row.recordDate
+                                ? new Date(row.recordDate).toLocaleDateString("tr-TR")
+                                : new Date(row.createdAt).toLocaleDateString("tr-TR"))
+                            : row.data?.[col] ?? ""}
                       </td>
                     ))}
                   </tr>

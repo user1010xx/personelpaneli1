@@ -3,11 +3,11 @@ import { z } from "zod";
 import type { ModuleKey } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { SHEET_MODULES } from "@/lib/modules";
-import { requireApiAdmin } from "@/lib/api-helpers";
+import { requireApiAdminFromDb } from "@/lib/api-helpers";
 import { logActivity, moduleTitle } from "@/lib/activity-log";
 
 export async function GET() {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const configs = await prisma.sheetConfig.findMany({
@@ -26,7 +26,7 @@ const upsertSchema = z.object({
 });
 
 export async function PUT(request: Request) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   try {

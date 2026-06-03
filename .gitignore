@@ -67,7 +67,19 @@ Thumbs.db
 
 # Sensitive files (auto-detected)
 .env
-.env.example
 node_modules
 tsconfig.tsbuildinfo
+
+# Local runtime artifacts
+dev-server.log
+full_diff.patch
+user_patch.diff
+BASLAT.ps1
+COPY_AND_RUN.bat
+start-dev.bat
+_copy-from-source.ps1
+
+# Local sample/import files
+/Üye adedi/
+/çağrı raporu/
 

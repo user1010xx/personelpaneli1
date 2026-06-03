@@ -9,8 +9,8 @@ describe("canModifyRecord", () => {
     expect(canModifyRecord(admin, "other")).toBe(true);
   });
 
-  it("allows user to edit any operational record", () => {
+  it("allows user to edit own operational record", () => {
     expect(canModifyRecord(user, "u1")).toBe(true);
-    expect(canModifyRecord(user, "other")).toBe(true);
+    expect(canModifyRecord(user, "other")).toBe(false);
   });
 });

@@ -1,15 +1,18 @@
 import type { Prisma } from "@prisma/client";
-import { requireApiAdmin, jsonResponse } from "@/lib/api-helpers";
+import { requireApiAdminFromDb, jsonResponse } from "@/lib/api-helpers";
 import { prisma } from "@/lib/db";
+import { parseDateInput } from "@/lib/date-parse";
 
 const MAX_PAGE_SIZE = 100;
 
 export async function GET(request: Request) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim() ?? "";
+  const from = parseDateInput(searchParams.get("from"));
+  const to = parseDateInput(searchParams.get("to"));
   const sortBy = searchParams.get("sortBy") ?? "createdAt";
   const sortDir: Prisma.SortOrder =
     searchParams.get("sortDir") === "asc" ? "asc" : "desc";
@@ -25,6 +28,18 @@ export async function GET(request: Request) {
         { description: { contains: search, mode: "insensitive" } },
         { action: { contains: search, mode: "insensitive" } },
       ],
+    });
+  }
+  if (from || to) {
+    const fromDate = from ? new Date(from) : null;
+    const toDate = to ? new Date(to) : null;
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    if (toDate) toDate.setHours(23, 59, 59, 999);
+    filters.push({
+      createdAt: {
+        ...(fromDate ? { gte: fromDate } : {}),
+        ...(toDate ? { lte: toDate } : {}),
+      },
     });
   }
 

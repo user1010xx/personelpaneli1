@@ -3,12 +3,12 @@ import { z } from "zod";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { requireApiAdmin } from "@/lib/api-helpers";
+import { requireApiAdminFromDb } from "@/lib/api-helpers";
 import { createUserSchema, zodErrorMessage } from "@/lib/user-validation";
 import { logActivity } from "@/lib/activity-log";
 
 export async function GET() {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const users = await prisma.user.findMany({
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   try {

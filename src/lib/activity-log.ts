@@ -19,6 +19,7 @@ export const MODULE_TITLES: Record<string, string> = {
   EGITIM: "Eğitim Geribildirim",
   KALITE: "Kalite Puanlaması",
   USERS: "Kullanıcı Yönetimi",
+  PERSONEL_ALIAS: "Personel Eşleştirme",
   LOG: "İşlem Logu",
 };
 

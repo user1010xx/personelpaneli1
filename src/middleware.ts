@@ -4,6 +4,30 @@ import { jwtVerify } from "jose";
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/health"];
 
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+function isTrustedRequestSource(request: NextRequest) {
+  const expectedOrigin = request.nextUrl.origin;
+  const origin = request.headers.get("origin");
+  if (origin) return origin === expectedOrigin;
+
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin === expectedOrigin;
+    } catch {
+      return false;
+    }
+  }
+
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite === "cross-site") return false;
+
+  return true;
+}
+
 function getSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -26,7 +50,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isPublic = isPublicPath(pathname);
+  const unsafeApiMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+  if (pathname.startsWith("/api/") && unsafeApiMethod) {
+    if (!isTrustedRequestSource(request)) {
+      return NextResponse.json({ error: "Geçersiz istek kaynağı" }, { status: 403 });
+    }
+  }
+
   const token = request.cookies.get("cc_panel_token")?.value;
   const secret = getSecret();
 
@@ -67,8 +98,10 @@ export async function middleware(request: NextRequest) {
 
   const adminOnlyPath =
     pathname.startsWith("/kullanicilar") ||
+    pathname.startsWith("/personel-eslestirme") ||
     pathname.startsWith("/log") ||
     pathname.startsWith("/api/users") ||
+    pathname.startsWith("/api/personel-aliases") ||
     pathname.startsWith("/api/activity-logs") ||
     pathname.startsWith("/api/sheets/config");
 

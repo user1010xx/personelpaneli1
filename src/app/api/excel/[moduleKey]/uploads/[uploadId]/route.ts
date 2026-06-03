@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { deleteExcelUpload } from "@/lib/excel";
 import { EXCEL_MODULES } from "@/lib/modules";
-import { jsonResponse, requireApiUser } from "@/lib/api-helpers";
+import { jsonResponse, requireApiAdminFromDb } from "@/lib/api-helpers";
 import { logActivity, moduleTitle } from "@/lib/activity-log";
 
 function formatPeriod(from: Date | null, to: Date | null) {
@@ -19,7 +19,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ moduleKey: string; uploadId: string }> },
 ) {
-  const auth = await requireApiUser();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const { moduleKey: rawKey, uploadId } = await params;

@@ -1,7 +1,12 @@
 import { endOfDay, startOfDay } from "date-fns";
 import { prisma } from "@/lib/db";
 import { findMetricInRow } from "@/lib/duration-parse";
-import { displayPersonelName, normalizePersonelName } from "@/lib/utils";
+import { displayPersonelName } from "@/lib/utils";
+import {
+  loadPersonelAliases,
+  resolvePersonelBucketKey,
+  resolvePersonelDisplayName,
+} from "@/lib/personel-alias";
 
 const DASHBOARD_ROW_LIMIT = 25_000;
 
@@ -62,6 +67,7 @@ function topLeaders(
 ): LeaderEntry[] {
   const sorted = [...rows]
     .map((p) => ({ personelName: p.personelName, value: pick(p) }))
+    .filter((p) => p.value > 0)
     .sort((a, b) => (order === "desc" ? b.value - a.value : a.value - b.value));
 
   return sorted.slice(0, limit).map((item) => ({
@@ -101,7 +107,17 @@ export async function getDashboardData(params: {
   const search = params.search?.trim().toLocaleLowerCase("tr-TR") ?? "";
   const range = datedRowWhere(from, to);
 
-  const [sheetRows, excelRows, qualityRows, personelRows] = await Promise.all([
+  const [
+    sheetRows,
+    excelRows,
+    qualityRows,
+    personelRows,
+    globalAliases,
+    whatsappAliases,
+    uyeAdediAliases,
+    cagriSureciAliases,
+    kaliteAliases,
+  ] = await Promise.all([
     prisma.sheetDataRow.findMany({
       where: { moduleKey: "WHATSAPP", ...range },
       select: {
@@ -111,6 +127,7 @@ export async function getDashboardData(params: {
         rowData: true,
       },
       take: DASHBOARD_ROW_LIMIT,
+      orderBy: [{ recordDate: "desc" }, { createdAt: "desc" }],
     }),
     prisma.excelDataRow.findMany({
       where: { moduleKey: { in: ["UYE_ADEDI", "CAGRI_SURECI"] }, ...range },
@@ -122,17 +139,25 @@ export async function getDashboardData(params: {
         rowData: true,
       },
       take: DASHBOARD_ROW_LIMIT,
+      orderBy: [{ recordDate: "desc" }, { createdAt: "desc" }],
     }),
     prisma.qualityScore.findMany({
       where: { recordDate: { gte: from, lte: to } },
       select: { personelName: true, score: true, recordDate: true },
       take: DASHBOARD_ROW_LIMIT,
+      orderBy: [{ recordDate: "desc" }],
     }),
     prisma.sheetDataRow.findMany({
       where: { moduleKey: "PERSONEL" },
       select: { personelName: true, rowData: true },
       take: 5000,
+      orderBy: [{ personelName: "asc" }, { createdAt: "desc" }],
     }),
+    loadPersonelAliases(),
+    loadPersonelAliases("WHATSAPP"),
+    loadPersonelAliases("UYE_ADEDI"),
+    loadPersonelAliases("CAGRI_SURECI"),
+    loadPersonelAliases("KALITE"),
   ]);
 
   const displayNames = new Map<string, string>();
@@ -147,12 +172,13 @@ export async function getDashboardData(params: {
     }
   >();
 
-  const register = (rawName: string) => {
+  const register = (rawName: string, aliases = globalAliases) => {
     const name = rawName.trim();
     if (!name) return null;
-    const key = normalizePersonelName(name);
+    const resolvedName = resolvePersonelDisplayName(name, aliases);
+    const key = resolvePersonelBucketKey(name, aliases);
     if (!displayNames.has(key)) {
-      displayNames.set(key, displayPersonelName(name));
+      displayNames.set(key, displayPersonelName(resolvedName));
     }
     if (!buckets.has(key)) {
       buckets.set(key, { uye: [], aramaAdedi: [], konusmaSuresi: [], kalite: [], whatsapp: [] });
@@ -167,7 +193,8 @@ export async function getDashboardData(params: {
 
   for (const row of excelRows) {
     const name = row.personelName || parsePersonelFromRow(row.rowData);
-    const key = register(name);
+    const aliases = row.moduleKey === "UYE_ADEDI" ? uyeAdediAliases : cagriSureciAliases;
+    const key = register(name, aliases);
     if (!key) continue;
     const data = row.rowData as Record<string, unknown>;
     const b = buckets.get(key)!;
@@ -192,7 +219,7 @@ export async function getDashboardData(params: {
 
   for (const row of sheetRows) {
     const name = row.personelName || parsePersonelFromRow(row.rowData);
-    const key = register(name);
+    const key = register(name, whatsappAliases);
     if (!key) continue;
     const data = row.rowData as Record<string, unknown>;
     const total = findMetricInRow(data, ["total whatsapp cevaps", "toplam whatsapp"]);
@@ -204,7 +231,7 @@ export async function getDashboardData(params: {
   }
 
   for (const row of qualityRows) {
-    const key = register(row.personelName);
+    const key = register(row.personelName, kaliteAliases);
     if (!key) continue;
     buckets.get(key)!.kalite.push(row.score);
   }
@@ -215,7 +242,7 @@ export async function getDashboardData(params: {
     const personelName = displayNames.get(key) ?? key;
     const person: DashboardPerson = {
       personelName,
-      uyeAdedi: avg(data.uye),
+      uyeAdedi: data.uye.reduce((total, value) => total + value, 0),
       ortalamaAramaAdedi: avg(data.aramaAdedi),
       ortalamaKonusmaSuresi: avg(data.konusmaSuresi),
       ortalamaCagriPuani: avg(data.kalite),

@@ -20,7 +20,7 @@ export function useMonthYearRange<T extends MonthYearFields>(
 ) {
   const { month, year } = useMemo(
     () => resolveMonthYear(filters),
-    [filters.month, filters.year, filters.from, filters.to],
+    [filters],
   );
 
   const { from, to } = useMemo(() => monthYearToIsoRange(month, year), [month, year]);

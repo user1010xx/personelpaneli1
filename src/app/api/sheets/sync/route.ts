@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { ModuleKey } from "@prisma/client";
 import { syncSheetModule } from "@/lib/google-sheets";
-import { requireApiUser } from "@/lib/api-helpers";
+import { requireApiAdminFromDb } from "@/lib/api-helpers";
 import { withModuleLock } from "@/lib/sync-lock";
 import { logActivity, moduleTitle } from "@/lib/activity-log";
 
@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  const auth = await requireApiUser();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   try {

@@ -15,7 +15,7 @@ import { usePanelFetch } from "@/hooks/use-panel-fetch";
 import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
-import { invalidateDataCaches } from "@/lib/panel-cache";
+import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 
 type Row = {
   id: string;
@@ -94,14 +94,14 @@ export function ManualQualityPage() {
     return p;
   }, [filters, from, to]);
 
-  const { data, showSkeleton, refreshing, error, invalidate } = usePanelFetch<QualityApiResponse>(
+  const { data, showSkeleton, refreshing, error } = usePanelFetch<QualityApiResponse>(
     "/api/quality",
     params,
     { debounceMs: 0 },
   );
 
-  const rows = data?.rows ?? [];
-  const summary = data?.summary ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
+  const summary = useMemo(() => data?.summary ?? [], [data?.summary]);
   const stats = data?.stats;
   const periodAverages = data?.periodAverages;
   const { search, sortDir, period } = filters;
@@ -194,8 +194,7 @@ export function ManualQualityPage() {
       const wasEdit = Boolean(editingId);
       closeForm();
       setMessage(wasEdit ? "Kayıt güncellendi" : "Kayıt kaydedildi");
-      invalidateDataCaches();
-      invalidate();
+      invalidateModuleDataCaches("KALITE");
     } else {
       setMessage(json.error ?? "Kayıt kaydedilemedi");
     }
@@ -448,8 +447,7 @@ export function ManualQualityPage() {
         onEdit={openEditForm}
         onDelete={async (id) => {
           await fetch(`/api/quality/${id}`, { method: "DELETE", credentials: "include" });
-          invalidateDataCaches();
-      invalidate();
+          invalidateModuleDataCaches("KALITE");
         }}
       />
     </div>
@@ -495,7 +493,7 @@ function Table({
         if (key === "score") return row.score;
         return row[key as keyof Row];
       }),
-    [rows, sort, sortKey, sortDir],
+    [rows, sort],
   );
 
   return (

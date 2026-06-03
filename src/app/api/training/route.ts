@@ -5,6 +5,7 @@ import { countTrainingByPeriod, buildTrainingSummary, trainingDateRange } from "
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
 import { timeStringSchema } from "@/lib/validation";
+import { loadPersonelAliases } from "@/lib/personel-alias";
 
 const MAX_PAGE_SIZE = 200;
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
     const where = filters.length ? { AND: filters } : undefined;
 
-    const [total, rows] = await Promise.all([
+    const [total, rows, aggregateRows, aliases] = await Promise.all([
       prisma.trainingFeedback.count({ where }),
       prisma.trainingFeedback.findMany({
         where,
@@ -47,19 +48,30 @@ export async function GET(request: Request) {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
+      prisma.trainingFeedback.findMany({
+        where,
+        select: {
+          personelName: true,
+          recordType: true,
+          recordDate: true,
+          createdAt: true,
+        },
+      }),
+      loadPersonelAliases("EGITIM"),
     ]);
 
     const summary = buildTrainingSummary(
-      rows.map((r) => ({
+      aggregateRows.map((r) => ({
         personelName: r.personelName,
         recordType: r.recordType ?? "EGITIM",
       })),
+      aliases,
     );
 
     const periodCounts = {
-      daily: countTrainingByPeriod(rows, "daily"),
-      weekly: countTrainingByPeriod(rows, "weekly"),
-      monthly: countTrainingByPeriod(rows, "monthly"),
+      daily: countTrainingByPeriod(aggregateRows, "daily", undefined, aliases),
+      weekly: countTrainingByPeriod(aggregateRows, "weekly", undefined, aliases),
+      monthly: countTrainingByPeriod(aggregateRows, "monthly", undefined, aliases),
     };
 
     return jsonResponse({

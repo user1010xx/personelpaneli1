@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     search: searchParams.get("search") ?? undefined,
   });
 
-  const buffer = rowsToWorkbook(
+  const buffer = await rowsToWorkbook(
     data.rows.map((p) => ({
       personel_adi: p.personelName,
       uye_adedi: p.uyeAdedi,

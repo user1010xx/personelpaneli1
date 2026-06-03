@@ -1,5 +1,5 @@
 /** "10:30", "1:05:30" gibi süreleri saniyeye çevirir; düz sayıları olduğu gibi bırakır */
-export function parseDurationOrNumber(value: unknown, keywords: string[]): number {
+export function parseDurationOrNumber(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return 0;
 
@@ -33,11 +33,11 @@ export function findMetricInRow(
     const normalized = key.toLocaleLowerCase("tr-TR");
     if (!keywords.some((k) => normalized.includes(k))) continue;
     if (preferDuration) {
-      return parseDurationOrNumber(value, keywords);
+      return parseDurationOrNumber(value);
     }
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
-      const d = parseDurationOrNumber(value, keywords);
+      const d = parseDurationOrNumber(value);
       if (d > 0) return d;
     }
   }

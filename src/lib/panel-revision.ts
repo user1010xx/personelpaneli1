@@ -26,13 +26,15 @@ async function latestSheetRevision(moduleKey: (typeof SHEET_MODULE_KEYS)[number]
 }
 
 async function latestExcelRevision(moduleKey: (typeof EXCEL_MODULE_KEYS)[number]) {
-  const upload = await prisma.excelUpload.findFirst({
-    where: { moduleKey },
-    orderBy: { uploadedAt: "desc" },
-    select: { id: true, uploadedAt: true },
-  });
-  if (!upload) return null;
-  return `${upload.uploadedAt.toISOString()}#${upload.id}`;
+  const [upload, rowCount] = await Promise.all([
+    prisma.excelUpload.findFirst({
+      where: { moduleKey },
+      orderBy: { uploadedAt: "desc" },
+      select: { id: true, uploadedAt: true },
+    }),
+    prisma.excelDataRow.count({ where: { moduleKey } }),
+  ]);
+  return upload ? `${upload.uploadedAt.toISOString()}#${upload.id}#${rowCount}` : `empty#${rowCount}`;
 }
 
 /** Son veri değişikliğine göre panel revizyonu (tüm kullanıcılar için ortak) */
@@ -44,11 +46,11 @@ export async function getPanelDataRevision(): Promise<PanelRevisionPayload> {
   const modules: Record<string, string> = {};
   const timestamps: number[] = [];
 
-  const [sheetRevisions, excelRevisions, qualityMax, trainingMax] = await Promise.all([
+  const [sheetRevisions, excelRevisions, qualityAgg, trainingAgg] = await Promise.all([
     Promise.all(SHEET_MODULE_KEYS.map((key) => latestSheetRevision(key))),
     Promise.all(EXCEL_MODULE_KEYS.map((key) => latestExcelRevision(key))),
-    prisma.qualityScore.aggregate({ _max: { updatedAt: true } }),
-    prisma.trainingFeedback.aggregate({ _max: { updatedAt: true } }),
+    prisma.qualityScore.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
+    prisma.trainingFeedback.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
   ]);
 
   SHEET_MODULE_KEYS.forEach((key, index) => {
@@ -61,14 +63,16 @@ export async function getPanelDataRevision(): Promise<PanelRevisionPayload> {
     if (rev) modules[key] = rev;
   });
 
-  if (qualityMax._max.updatedAt) {
-    modules.KALITE = qualityMax._max.updatedAt.toISOString();
-    timestamps.push(qualityMax._max.updatedAt.getTime());
+  if (qualityAgg._max.updatedAt || qualityAgg._count._all > 0) {
+    const value = `${qualityAgg._max.updatedAt?.toISOString() ?? "empty"}#${qualityAgg._count._all}`;
+    modules.KALITE = value;
+    if (qualityAgg._max.updatedAt) timestamps.push(qualityAgg._max.updatedAt.getTime());
   }
 
-  if (trainingMax._max.updatedAt) {
-    modules.EGITIM = trainingMax._max.updatedAt.toISOString();
-    timestamps.push(trainingMax._max.updatedAt.getTime());
+  if (trainingAgg._max.updatedAt || trainingAgg._count._all > 0) {
+    const value = `${trainingAgg._max.updatedAt?.toISOString() ?? "empty"}#${trainingAgg._count._all}`;
+    modules.EGITIM = value;
+    if (trainingAgg._max.updatedAt) timestamps.push(trainingAgg._max.updatedAt.getTime());
   }
 
   for (const rev of [...sheetRevisions, ...excelRevisions]) {

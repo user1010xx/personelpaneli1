@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { formatLogTimestamp, roleLabel } from "@/lib/activity-log";
 import { usePanelFetch } from "@/hooks/use-panel-fetch";
@@ -32,6 +32,8 @@ export function ActivityLogPage() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   const params = useMemo(() => {
     const p = new URLSearchParams({
@@ -41,8 +43,10 @@ export function ActivityLogPage() {
       sortDir,
     });
     if (search.trim()) p.set("search", search.trim());
+    if (from) p.set("from", from);
+    if (to) p.set("to", to);
     return p;
-  }, [page, search, sortBy, sortDir]);
+  }, [from, page, search, sortBy, sortDir, to]);
 
   const handleSort = (key: string) => {
     setSortDir((dir) => nextSortDir(sortBy, key, dir));
@@ -53,12 +57,8 @@ export function ActivityLogPage() {
   const { data, refreshing, error, showSkeleton, reload } = usePanelFetch<LogResponse>(
     "/api/activity-logs",
     params,
+    { refetchOnPanelUpdate: false },
   );
-
-  useEffect(() => {
-    const timer = setInterval(() => void reload({ silent: true }), 10_000);
-    return () => clearInterval(timer);
-  }, [reload]);
 
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
@@ -89,6 +89,42 @@ export function ActivityLogPage() {
             />
           </div>
         </div>
+        <div className="filter-field min-w-[160px]">
+          <span className="filter-label">Başlangıç</span>
+          <Input
+            type="date"
+            value={from}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <div className="filter-field min-w-[160px]">
+          <span className="filter-label">Bitiş</span>
+          <Input
+            type="date"
+            value={to}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setSearch("");
+            setFrom("");
+            setTo("");
+            setPage(1);
+          }}
+        >
+          Filtreleri temizle
+        </Button>
+        <Button variant="secondary" onClick={() => void reload({ silent: true, force: true })}>
+          Yenile
+        </Button>
       </div>
 
       {refreshing && !showSkeleton ? (

@@ -5,6 +5,7 @@ import { computeModuleStats } from "@/lib/stats";
 import { averageScore, buildQualitySummary, qualityDateRange } from "@/lib/quality";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
+import { loadPersonelAliases } from "@/lib/personel-alias";
 
 const MAX_PAGE_SIZE = 200;
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
     const where = filters.length ? { AND: filters } : undefined;
 
-    const [total, rows] = await Promise.all([
+    const [total, rows, aggregateRows, aliases] = await Promise.all([
       prisma.qualityScore.count({ where }),
       prisma.qualityScore.findMany({
         where,
@@ -47,13 +48,24 @@ export async function GET(request: Request) {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
+      prisma.qualityScore.findMany({
+        where,
+        select: {
+          personelName: true,
+          score: true,
+          recordDate: true,
+          createdAt: true,
+        },
+      }),
+      loadPersonelAliases("KALITE"),
     ]);
 
     const summary = buildQualitySummary(
-      rows.map((r) => ({ personelName: r.personelName, score: r.score })),
+      aggregateRows.map((r) => ({ personelName: r.personelName, score: r.score })),
+      aliases,
     );
 
-    const statRows = rows.map((r) => ({
+    const statRows = aggregateRows.map((r) => ({
       recordDate: r.recordDate,
       createdAt: r.createdAt,
       personelName: r.personelName,
@@ -81,7 +93,7 @@ export async function GET(request: Request) {
       pageSize,
       stats,
       periodAverages,
-      summaryOrtalama: averageScore(rows),
+      summaryOrtalama: averageScore(aggregateRows),
     });
   } catch (error) {
     console.error("[quality GET]", error);

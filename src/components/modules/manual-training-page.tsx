@@ -18,7 +18,7 @@ import { usePanelFetch } from "@/hooks/use-panel-fetch";
 import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
-import { invalidateDataCaches } from "@/lib/panel-cache";
+import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 
 type Row = {
   id: string;
@@ -96,14 +96,14 @@ export function ManualTrainingPage() {
     return p;
   }, [filters, from, to]);
 
-  const { data, showSkeleton, refreshing, error, invalidate } = usePanelFetch<TrainingApiResponse>(
+  const { data, showSkeleton, refreshing, error } = usePanelFetch<TrainingApiResponse>(
     "/api/training",
     params,
     { debounceMs: 0 },
   );
 
-  const rows = data?.rows ?? [];
-  const summary = data?.summary ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
+  const summary = useMemo(() => data?.summary ?? [], [data?.summary]);
   const periodCounts = data?.periodCounts;
   const { search, sortDir, period } = filters;
 
@@ -195,8 +195,7 @@ export function ManualTrainingPage() {
       const wasEdit = Boolean(editingId);
       closeForm();
       setMessage(wasEdit ? "Kayıt güncellendi" : "Kayıt kaydedildi");
-      invalidateDataCaches();
-      invalidate();
+      invalidateModuleDataCaches("EGITIM");
     } else {
       setMessage(json.error ?? "Kayıt kaydedilemedi");
     }
@@ -467,8 +466,7 @@ export function ManualTrainingPage() {
         onEdit={openEditForm}
         onDelete={async (id) => {
           await fetch(`/api/training/${id}`, { method: "DELETE", credentials: "include" });
-          invalidateDataCaches();
-      invalidate();
+          invalidateModuleDataCaches("EGITIM");
         }}
       />
     </div>
@@ -514,7 +512,7 @@ function Table({
         if (key === "startTime") return row.startTime;
         return row[key as keyof Row];
       }),
-    [rows, sort, sortKey, sortDir],
+    [rows, sort],
   );
 
   return (

@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Period } from "@/lib/date-ranges";
 import type { ModuleStats } from "@/lib/stats";
 import {
+  dedupePanelRequest,
+  eventAffectsPrefix,
   getPanelCache,
-  getPanelCacheAge,
   invalidatePanelCache,
+  isPanelCacheStale,
   PANEL_DATA_UPDATED_EVENT,
-  PANEL_STALE_REVALIDATE_MS,
   panelCacheKey,
   setPanelCache,
 } from "@/lib/panel-cache";
@@ -42,6 +43,10 @@ function buildFetchQuery(baseQuery: string, phase: LoadPhase) {
   return params.toString();
 }
 
+function statsCacheKey(key: string) {
+  return `${key}#stats`;
+}
+
 export function useModuleData(apiPath: string, params: URLSearchParams) {
   const query = params.toString();
   const key = panelCacheKey(apiPath, query);
@@ -69,6 +74,13 @@ export function useModuleData(apiPath: string, params: URLSearchParams) {
             stats: json.stats,
             statsTruncated: json.statsTruncated,
           });
+        } else {
+          setPanelCache(statsCacheKey(key), {
+            rows: [],
+            total: 0,
+            stats: json.stats,
+            statsTruncated: json.statsTruncated,
+          });
         }
       } else {
         setRows(json.rows ?? []);
@@ -78,11 +90,13 @@ export function useModuleData(apiPath: string, params: URLSearchParams) {
           setStatsTruncated(Boolean(json.statsTruncated));
         }
         const prev = getPanelCache<ModulePayload>(key);
+        const cachedStats = getPanelCache<ModulePayload>(statsCacheKey(key));
         setPanelCache(key, {
           rows: json.rows ?? [],
           total: json.total ?? 0,
-          stats: json.stats ?? prev?.stats,
-          statsTruncated: json.statsTruncated ?? prev?.statsTruncated,
+          stats: json.stats ?? prev?.stats ?? cachedStats?.stats,
+          statsTruncated:
+            json.statsTruncated ?? prev?.statsTruncated ?? cachedStats?.statsTruncated,
         });
       }
       setError(null);
@@ -100,21 +114,25 @@ export function useModuleData(apiPath: string, params: URLSearchParams) {
 
       try {
         const statsQuery = buildFetchQuery(query, "stats");
-        const res = await fetch(statsQuery ? `${apiPath}?${statsQuery}` : apiPath, {
-          signal: controller.signal,
-          credentials: "include",
+        const requestKey = panelCacheKey(apiPath, statsQuery);
+        const json = await dedupePanelRequest(requestKey, async () => {
+          const res = await fetch(statsQuery ? `${apiPath}?${statsQuery}` : apiPath, {
+            credentials: "include",
+          });
+          const payload = (await res.json()) as ModulePayload & { error?: string };
+          if (!res.ok) {
+            throw new Error(payload.error ?? "İstatistikler yüklenemedi");
+          }
+          return payload;
         });
-        const json = (await res.json()) as ModulePayload & { error?: string };
         if (controller.signal.aborted) return;
-
-        if (!res.ok) {
-          if (!opts?.silent) setError(json.error ?? "İstatistikler yüklenemedi");
-          return;
-        }
 
         applyPayload(json, true);
-      } catch (e) {
+      } catch (error) {
         if (controller.signal.aborted) return;
+        if (!opts?.silent) {
+          setError(error instanceof Error ? error.message : "İstatistikler yüklenemedi");
+        }
       } finally {
         if (!controller.signal.aborted && !opts?.silent) {
           setRefreshing(false);
@@ -142,17 +160,18 @@ export function useModuleData(apiPath: string, params: URLSearchParams) {
       }
 
       try {
-        const res = await fetch(fetchQuery ? `${apiPath}?${fetchQuery}` : apiPath, {
-          signal: controller.signal,
-          credentials: "include",
+        const requestKey = panelCacheKey(apiPath, fetchQuery);
+        const json = await dedupePanelRequest(requestKey, async () => {
+          const res = await fetch(fetchQuery ? `${apiPath}?${fetchQuery}` : apiPath, {
+            credentials: "include",
+          });
+          const payload = (await res.json()) as ModulePayload & { error?: string };
+          if (!res.ok) {
+            throw new Error(payload.error ?? "Veri yüklenemedi");
+          }
+          return payload;
         });
-        const json = (await res.json()) as ModulePayload & { error?: string };
         if (controller.signal.aborted) return;
-
-        if (!res.ok) {
-          setError(json.error ?? "Veri yüklenemedi");
-          return;
-        }
 
         applyPayload(json);
       } catch (e) {
@@ -173,8 +192,7 @@ export function useModuleData(apiPath: string, params: URLSearchParams) {
     if (hit) {
       applyPayload(hit);
       setLoading(false);
-      const age = getPanelCacheAge(key);
-      if (age !== null && age > PANEL_STALE_REVALIDATE_MS) {
+      if (isPanelCacheStale(key)) {
         void load({ silent: true });
       } else if (!hit.stats) {
         void loadStats({ silent: true });
@@ -190,10 +208,14 @@ export function useModuleData(apiPath: string, params: URLSearchParams) {
   }, [applyPayload, key, load, loadStats]);
 
   useEffect(() => {
-    const onUpdated = () => void load({ silent: true, withStats: true });
+    const onUpdated = (event: Event) => {
+      if (eventAffectsPrefix(event, apiPath)) {
+        void load({ silent: true, withStats: true });
+      }
+    };
     window.addEventListener(PANEL_DATA_UPDATED_EVENT, onUpdated);
     return () => window.removeEventListener(PANEL_DATA_UPDATED_EVENT, onUpdated);
-  }, [load]);
+  }, [apiPath, load]);
 
   const invalidate = useCallback(() => {
     invalidatePanelCache(apiPath);

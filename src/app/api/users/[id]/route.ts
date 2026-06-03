@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { requireApiAdmin } from "@/lib/api-helpers";
+import { requireApiAdminFromDb } from "@/lib/api-helpers";
 import { ensureNotLastActiveAdmin } from "@/lib/admin-guard";
 import { updateUserSchema, zodErrorMessage } from "@/lib/user-validation";
 import { logActivity } from "@/lib/activity-log";
@@ -13,7 +13,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   try {
@@ -87,7 +87,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireApiAdmin();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const { id } = await params;

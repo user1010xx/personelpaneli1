@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz e-posta veya şifre" }, { status: 401 });
     }
 
-    const valid = await verifyPassword(body.password.trim(), user.passwordHash);
+    const valid = await verifyPassword(body.password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "Geçersiz e-posta veya şifre" }, { status: 401 });
     }

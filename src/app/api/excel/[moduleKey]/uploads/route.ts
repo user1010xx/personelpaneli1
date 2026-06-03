@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import type { ModuleKey } from "@prisma/client";
 import { listExcelUploads } from "@/lib/excel";
 import { EXCEL_MODULES } from "@/lib/modules";
-import { jsonResponse, requireApiUser } from "@/lib/api-helpers";
+import { jsonResponse, requireApiAdminFromDb } from "@/lib/api-helpers";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ moduleKey: string }> },
 ) {
-  const auth = await requireApiUser();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const { moduleKey: rawKey } = await params;

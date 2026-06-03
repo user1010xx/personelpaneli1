@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     take: EXPORT_ROW_LIMIT,
   });
 
-  const buffer = rowsToWorkbook(
+  const buffer = await rowsToWorkbook(
     rows.map((r) => ({
       kayit_tarihi: r.createdAt.toLocaleString("tr-TR"),
       personel_adi: r.personelName,

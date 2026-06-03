@@ -25,6 +25,18 @@ function filterByPeriod(rows: StatRow[], period: Period, anchor = new Date()) {
   });
 }
 
+function computeStatsForRange(
+  rows: StatRow[],
+  period: Period,
+  range: { from: Date; to: Date },
+): ModuleStats {
+  const filtered = rows.filter((row) => {
+    const date = row.recordDate ?? row.createdAt;
+    return date >= range.from && date <= range.to;
+  });
+  return computeModuleStats(filtered, period, range.to);
+}
+
 export function computeSheetModuleStats(
   moduleKey: ModuleKey,
   rows: StatRow[],
@@ -35,7 +47,9 @@ export function computeSheetModuleStats(
   const periodRange = getPeriodRange(period, anchor);
   const range = customRange ?? periodRange;
   const filtered = filterByPeriod(rows, period, anchor);
-  const base = computeModuleStats(rows, period, anchor);
+  const base = customRange
+    ? computeStatsForRange(rows, period, customRange)
+    : computeModuleStats(rows, period, anchor);
 
   if (moduleKey === "PUANTAJ") {
     const puantajRows = rows.map((r) => ({

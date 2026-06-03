@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { Period } from "@/lib/date-ranges";
-import { getSessionUser, getSessionUserFromDb } from "@/lib/auth";
+import { getSessionUserFromDb } from "@/lib/auth";
 
-/** JWT — liste/okuma API’leri (her istekte DB sorgusu yok) */
+/** DB-backed API guard — pasif kullanıcı ve rol değişiklikleri anında yansır */
 export async function requireApiUser() {
-  const user = await getSessionUser();
+  const user = await getSessionUserFromDb();
   if (!user) {
     return { user: null, error: NextResponse.json({ error: "Yetkisiz" }, { status: 401 }) };
   }
@@ -13,15 +13,23 @@ export async function requireApiUser() {
 
 /** DB — kullanıcı devre dışı / rol değişimi anında yansısın */
 export async function requireApiUserFromDb() {
-  const user = await getSessionUserFromDb();
-  if (!user) {
-    return { user: null, error: NextResponse.json({ error: "Yetkisiz" }, { status: 401 }) };
-  }
-  return { user, error: null };
+  return requireApiUser();
 }
 
 export async function requireApiAdmin() {
   const result = await requireApiUser();
+  if (result.error) return result;
+  if (result.user!.role !== "ADMIN") {
+    return {
+      user: null,
+      error: NextResponse.json({ error: "Admin yetkisi gerekli" }, { status: 403 }),
+    };
+  }
+  return result;
+}
+
+export async function requireApiAdminFromDb() {
+  const result = await requireApiUserFromDb();
   if (result.error) return result;
   if (result.user!.role !== "ADMIN") {
     return {

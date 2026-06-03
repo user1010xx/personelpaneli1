@@ -12,7 +12,7 @@ import {
 } from "@/lib/sheet-parsers";
 import type { SheetModuleStats } from "@/lib/sheet-stats";
 import { useModuleData } from "@/hooks/use-module-data";
-import { invalidateDataCaches } from "@/lib/panel-cache";
+import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { useMonthYearRange } from "@/hooks/use-month-year-range";
 import { currentMonthYear } from "@/lib/month-year";
@@ -39,6 +39,7 @@ type Props = {
   title: string;
   description: string;
   sheetsConfigured?: boolean;
+  canManage?: boolean;
 };
 
 export function SheetModulePage({
@@ -46,6 +47,7 @@ export function SheetModulePage({
   title,
   description,
   sheetsConfigured = true,
+  canManage = false,
 }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -115,7 +117,7 @@ export function SheetModulePage({
     return p;
   }, [search, from, to, sortBy, sortDir, period, page, isPersonel, isWhatsapp]);
 
-  const { rows, total, stats, statsTruncated, loading, refreshing, error, invalidate } =
+  const { rows, total, stats, statsTruncated, loading, refreshing, error } =
     useModuleData(`/api/data/${moduleKey}`, params);
 
   const typedRows = rows as DataRow[];
@@ -171,8 +173,7 @@ export function SheetModulePage({
     }
     const tab = json.sheetTab ? ` (sekme: ${json.sheetTab})` : "";
     setMessage(`${json.rowCount} satır senkronize edildi${tab}.`);
-    invalidateDataCaches();
-    invalidate();
+    invalidateModuleDataCaches(moduleKey);
   }
 
   function exportExcel() {
@@ -192,10 +193,12 @@ export function SheetModulePage({
         description={`${description} · ${periodLabel}`}
         actions={
           <>
-            <Button onClick={syncNow} disabled={syncing || !sheetsConfigured}>
-              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-              Google Sheets Güncelle
-            </Button>
+            {canManage ? (
+              <Button onClick={syncNow} disabled={syncing || !sheetsConfigured}>
+                <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+                Google Sheets Güncelle
+              </Button>
+            ) : null}
             <Button variant="secondary" onClick={exportExcel}>
               <Download className="h-4 w-4" />
               Excel İndir

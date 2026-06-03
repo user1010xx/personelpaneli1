@@ -6,7 +6,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function normalizePersonelName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("tr-TR");
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[çğışöü]/g, (char) => {
+      const map: Record<string, string> = {
+        ç: "c",
+        ğ: "g",
+        ı: "i",
+        ş: "s",
+        ö: "o",
+        ü: "u",
+      };
+      return map[char] ?? char;
+    });
 }
 
 export function displayPersonelName(value: string) {

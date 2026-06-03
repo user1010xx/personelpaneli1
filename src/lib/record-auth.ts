@@ -1,6 +1,6 @@
 import type { SessionUser } from "@/types/auth";
 
-/** Giriş yapmış tüm kullanıcılar operasyonel kayıtları düzenleyebilir */
-export function canModifyRecord(user: SessionUser, _createdById: string) {
-  return user.role === "ADMIN" || user.role === "USER";
+/** Operasyonel kayıtları yalnızca admin veya kaydı oluşturan kullanıcı düzenleyebilir */
+export function canModifyRecord(user: SessionUser, createdById: string) {
+  return user.role === "ADMIN" || user.id === createdById;
 }

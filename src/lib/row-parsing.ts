@@ -35,14 +35,17 @@ function normalizeKey(key: string) {
   return key.trim().toLocaleLowerCase("tr-TR");
 }
 
-export function parseRowRecordDate(row: Record<string, unknown>): Date | null {
+export function parseRowRecordDate(
+  row: Record<string, unknown>,
+  options: { fallback?: boolean } = {},
+): Date | null {
   for (const [key, raw] of Object.entries(row)) {
     if (!DATE_KEYS.includes(normalizeKey(key))) continue;
     const parsed = parseFlexibleDate(raw);
     if (parsed) return parsed;
   }
 
-  if (strictParsing()) return null;
+  if (strictParsing() || options.fallback === false) return null;
 
   for (const raw of Object.values(row)) {
     const parsed = parseFlexibleDate(raw);

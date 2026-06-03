@@ -42,16 +42,14 @@ const NAV_GROUPS: { label: string; keys: string[] }[] = [
     keys: ["PERSONEL", "PUANTAJ", "UYARI_KESINTI", "WHATSAPP", "UYE_ADEDI", "CAGRI_SURECI"],
   },
   { label: "Kalite & Eğitim", keys: ["EGITIM", "KALITE"] },
-  { label: "Sistem", keys: ["USERS", "LOG"] },
+  { label: "Sistem", keys: ["USERS", "PERSONEL_ALIAS", "LOG"] },
 ];
 
 export function Sidebar({ user }: { user: SessionUser }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const items = NAV_MODULES.filter(
-    (m) => (m.key !== "USERS" && m.key !== "LOG") || user.role === "ADMIN",
-  );
+  const items = NAV_MODULES.filter((m) => m.source !== "admin" || user.role === "ADMIN");
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });

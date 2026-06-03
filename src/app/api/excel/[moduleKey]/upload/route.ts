@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { importExcelRows } from "@/lib/excel";
 import { EXCEL_MODULES } from "@/lib/modules";
-import { requireApiUser, parseDate } from "@/lib/api-helpers";
+import { requireApiAdminFromDb, parseDate } from "@/lib/api-helpers";
 import { withModuleLock } from "@/lib/sync-lock";
 import { logActivity, moduleTitle } from "@/lib/activity-log";
 
@@ -12,7 +12,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ moduleKey: string }> },
 ) {
-  const auth = await requireApiUser();
+  const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const { moduleKey: rawKey } = await params;

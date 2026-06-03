@@ -2,11 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import {
-  invalidateDataCaches,
-  PANEL_DATA_UPDATED_EVENT,
+  invalidateModulesDataCaches,
 } from "@/lib/panel-cache";
 
-const POLL_MS = 30_000;
+const POLL_MS = 120_000;
 
 /**
  * Bir kullanıcı (admin veya user) veri güncellediğinde diğer oturumlar da
@@ -14,6 +13,7 @@ const POLL_MS = 30_000;
  */
 export function usePanelRevisionSync() {
   const revisionRef = useRef<string | null>(null);
+  const modulesRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -26,16 +26,21 @@ export function usePanelRevisionSync() {
         });
         if (!res.ok || !active) return;
 
-        const json = (await res.json()) as { revision?: string };
+        const json = (await res.json()) as { revision?: string; modules?: Record<string, string> };
         const next = json.revision ?? "";
         const prev = revisionRef.current;
 
         if (prev !== null && prev !== next) {
-          invalidateDataCaches();
-          window.dispatchEvent(new CustomEvent(PANEL_DATA_UPDATED_EVENT));
+          const previousModules = modulesRef.current;
+          const nextModules = json.modules ?? {};
+          const changedModules = Array.from(
+            new Set([...Object.keys(previousModules), ...Object.keys(nextModules)]),
+          ).filter((key) => previousModules[key] !== nextModules[key]);
+          invalidateModulesDataCaches(changedModules);
         }
 
         revisionRef.current = next;
+        modulesRef.current = json.modules ?? {};
       } catch {
         /* ağ hatası — sonraki turda tekrar dene */
       }
@@ -47,16 +52,18 @@ export function usePanelRevisionSync() {
     function onFocus() {
       void checkRevision();
     }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") void checkRevision();
+    }
 
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") void checkRevision();
-    });
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       active = false;
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 }

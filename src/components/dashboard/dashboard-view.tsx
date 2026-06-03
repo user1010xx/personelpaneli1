@@ -116,7 +116,7 @@ export function DashboardView() {
     { debounceMs: 0 },
   );
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const leaders = data?.leaders ?? null;
   const { search, sortKey, sortDir } = filters;
 

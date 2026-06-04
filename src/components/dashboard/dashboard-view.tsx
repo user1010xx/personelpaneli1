@@ -92,6 +92,8 @@ export function DashboardView() {
   const [filters, setFilters] = usePersistedPageState("dashboard", {
     month: defaultPeriod.month,
     year: defaultPeriod.year,
+    customFrom: "",
+    customTo: "",
     search: "",
     sortKey: "personelName" as SortKey,
     sortDir: "asc" as SortDir,
@@ -103,12 +105,23 @@ export function DashboardView() {
     filters,
     patchFilters,
   );
+  const hasCustomRange = Boolean(filters.customFrom || filters.customTo);
+  const effectiveFrom = filters.customFrom || from;
+  const effectiveTo = filters.customTo || to;
+  const effectivePeriodLabel =
+    filters.customFrom && filters.customTo
+      ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
+      : filters.customFrom
+        ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(to).toLocaleDateString("tr-TR")}`
+        : filters.customTo
+          ? `${new Date(from).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
+          : periodLabel;
 
   const params = useMemo(() => {
-    const p = new URLSearchParams({ from, to });
+    const p = new URLSearchParams({ from: effectiveFrom, to: effectiveTo });
     if (filters.search) p.set("search", filters.search);
     return p;
-  }, [filters.search, from, to]);
+  }, [effectiveFrom, effectiveTo, filters.search]);
 
   const { data, showSkeleton, refreshing } = usePanelFetch<DashboardApiResponse>(
     "/api/dashboard",
@@ -152,7 +165,7 @@ export function DashboardView() {
   }
 
   function exportExcel() {
-    const params = new URLSearchParams({ from, to });
+    const params = new URLSearchParams({ from: effectiveFrom, to: effectiveTo });
     if (search) params.set("search", search);
     window.open(`/api/dashboard/export?${params}`, "_blank");
   }
@@ -167,15 +180,38 @@ export function DashboardView() {
       <section className="panel-card p-5 sm:p-6">
         <h2 className="mb-1 font-display text-lg font-bold text-slate-900">Dönem seçimi</h2>
         <p className="mb-5 text-xs text-slate-500">
-          Dashboard metrikleri seçilen ay ve yıla göre hesaplanır — şu an:{" "}
-          <span className="font-semibold text-brand-700">{periodLabel}</span>
+          Dashboard metrikleri seçilen ay/yıl veya günlük aralığa göre hesaplanır — şu an:{" "}
+          <span className="font-semibold text-brand-700">{effectivePeriodLabel}</span>
         </p>
-        <div className="grid gap-4 lg:grid-cols-[minmax(220px,280px)_1fr_auto] lg:items-end">
+        <div className="grid gap-4 xl:grid-cols-[minmax(220px,280px)_minmax(260px,360px)_1fr_auto] xl:items-end">
           <MonthYearPicker
             month={month}
             year={year}
-            onChange={(m, y) => setMonthYear(m, y)}
+            onChange={(m, y) => {
+              setMonthYear(m, y);
+              patchFilters({ customFrom: "", customTo: "" });
+            }}
           />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="filter-label">Başlangıç</span>
+              <input
+                type="date"
+                value={filters.customFrom}
+                onChange={(e) => patchFilters({ customFrom: e.target.value })}
+                className="panel-input w-full"
+              />
+            </label>
+            <label className="block">
+              <span className="filter-label">Bitiş</span>
+              <input
+                type="date"
+                value={filters.customTo}
+                onChange={(e) => patchFilters({ customTo: e.target.value })}
+                className="panel-input w-full"
+              />
+            </label>
+          </div>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-slate-600">Ara</span>
             <div className="relative">
@@ -198,6 +234,15 @@ export function DashboardView() {
             >
               Uygula
             </button>
+            {hasCustomRange ? (
+              <button
+                type="button"
+                onClick={() => patchFilters({ customFrom: "", customTo: "" })}
+                className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                Aylık göster
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={exportExcel}
@@ -209,7 +254,7 @@ export function DashboardView() {
           </div>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          {periodLabel} · Üye Adedi, Çağrı Süreci, Kalite ve
+          {effectivePeriodLabel} · Üye Adedi, Çağrı Süreci, Kalite ve
           WhatsApp modüllerinden birleştirilmiş veri
         </p>
       </section>

@@ -1,4 +1,4 @@
-import { SheetModulePage } from "@/components/modules/sheet-module-page";
+﻿import { SheetModulePage } from "@/components/modules/sheet-module-page";
 import { getSessionUserFromDb } from "@/lib/auth";
 import { hasGoogleServiceAccount } from "@/lib/google-env";
 
@@ -10,7 +10,7 @@ export default async function UyariKesintiPage() {
       title="Uyarı Kesinti"
       description="Google Sheets uyarı ve kesinti kayıtları."
       sheetsConfigured={hasGoogleServiceAccount()}
-      canManage={user?.role === "ADMIN"}
+      canManage={Boolean(user)}
     />
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Save } from "lucide-react";
+import { KeyRound, Save, Trash2 } from "lucide-react";
 import type { ModuleKey } from "@prisma/client";
 import { SHEET_MODULES } from "@/lib/modules";
 import { normalizeEmailInput, validateUserFormClient } from "@/lib/user-validation";
@@ -24,6 +24,17 @@ const MODULE_LABELS: Record<string, string> = {
   WHATSAPP: "WhatsApp Süreci",
   UYARI_KESINTI: "Uyarı Kesinti",
 };
+
+function generatePassword(length = 10) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  const cryptoObj = globalThis.crypto;
+  if (!cryptoObj?.getRandomValues) {
+    return Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+  }
+  const values = new Uint32Array(length);
+  cryptoObj.getRandomValues(values);
+  return Array.from(values, (value) => alphabet[value % alphabet.length]).join("");
+}
 
 export function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -156,13 +167,22 @@ export function UsersAdminPage() {
           </div>
           <div>
             <Label>Şifre (en az 6 karakter)</Label>
-            <Input
-              type="password"
-              value={userForm.password}
-              onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-              minLength={6}
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                minLength={6}
+                required
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setUserForm({ ...userForm, password: generatePassword(10) })}
+              >
+                Üret
+              </Button>
+            </div>
           </div>
           <div>
             <Label>Rol</Label>
@@ -264,15 +284,20 @@ function UserRow({
 }) {
   const [role, setRole] = useState(user.role);
   const [active, setActive] = useState(user.active);
+  const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function save() {
+    if (password && password.length < 6) {
+      onMessage({ text: "Yeni şifre en az 6 karakter olmalı", type: "error" });
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ role, active }),
+      body: JSON.stringify({ role, active, ...(password ? { password } : {}) }),
     });
     const json = await res.json();
     setSaving(false);
@@ -280,6 +305,7 @@ function UserRow({
       onMessage({ text: json.error ?? "Güncelleme başarısız", type: "error" });
       return;
     }
+    setPassword("");
     onMessage({ text: "Kullanıcı güncellendi", type: "ok" });
     onUpdated();
   }
@@ -296,6 +322,21 @@ function UserRow({
       return;
     }
     onMessage({ text: "Kullanıcı pasifleştirildi", type: "ok" });
+    onUpdated();
+  }
+
+  async function remove() {
+    if (!confirm(`${user.name} kullanıcısı kalıcı olarak silinsin mi?`)) return;
+    const res = await fetch(`/api/users/${user.id}?mode=hard`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      onMessage({ text: json.error ?? "Kullanıcı silinemedi", type: "error" });
+      return;
+    }
+    onMessage({ text: "Kullanıcı silindi", type: "ok" });
     onUpdated();
   }
 
@@ -320,7 +361,20 @@ function UserRow({
         </label>
       </td>
       <td className="px-4 py-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-[260px] gap-2">
+            <Input
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Yeni şifre"
+              minLength={6}
+            />
+            <Button type="button" size="sm" variant="secondary" onClick={() => setPassword(generatePassword(10))}>
+              <KeyRound className="h-4 w-4" />
+              Üret
+            </Button>
+          </div>
           <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
             Kaydet
           </Button>
@@ -329,6 +383,10 @@ function UserRow({
               Pasifleştir
             </Button>
           ) : null}
+          <Button type="button" size="sm" variant="danger" onClick={() => void remove()}>
+            <Trash2 className="h-4 w-4" />
+            Sil
+          </Button>
         </div>
       </td>
     </tr>

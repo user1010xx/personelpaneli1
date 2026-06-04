@@ -84,13 +84,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireApiAdminFromDb();
   if (auth.error) return auth.error;
 
   const { id } = await params;
+  const mode = new URL(request.url).searchParams.get("mode");
+  const hardDelete = mode === "hard";
   if (auth.user!.id === id) {
     return NextResponse.json({ error: "Kendi hesabınızı silemezsiniz" }, { status: 400 });
   }
@@ -102,19 +104,32 @@ export async function DELETE(
 
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { name: true, email: true },
+    select: { name: true, email: true, role: true, active: true },
   });
+
+  if (!target) {
+    return NextResponse.json({ error: "Kullanıcı bulunamadı" }, { status: 404 });
+  }
+
+  if (hardDelete) {
+    await prisma.user.delete({ where: { id } });
+    logActivity(
+      auth.user!,
+      "KULLANICI_SIL",
+      `${target.name} (${target.email}) kullanıcısını kalıcı olarak sildi.`,
+      { moduleKey: "USERS", metadata: { targetUserId: id } },
+    );
+    return NextResponse.json({ ok: true, deleted: true });
+  }
 
   await prisma.user.update({ where: { id }, data: { active: false } });
 
-  if (target) {
-    logActivity(
-      auth.user!,
-      "KULLANICI_PASIF",
-      `${target.name} (${target.email}) kullanıcısını pasifleştirdi.`,
-      { moduleKey: "USERS", metadata: { targetUserId: id } },
-    );
-  }
+  logActivity(
+    auth.user!,
+    "KULLANICI_PASIF",
+    `${target.name} (${target.email}) kullanıcısını pasifleştirdi.`,
+    { moduleKey: "USERS", metadata: { targetUserId: id } },
+  );
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deleted: false });
 }

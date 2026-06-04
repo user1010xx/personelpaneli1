@@ -10,6 +10,7 @@ import {
   LogOut,
   MessageCircle,
   Phone,
+  Files,
   ScrollText,
   Shield,
   Star,
@@ -31,6 +32,7 @@ const iconMap = {
   star: Star,
   "user-plus": UserPlus,
   phone: Phone,
+  files: Files,
   shield: Shield,
   "scroll-text": ScrollText,
 } as const;
@@ -39,7 +41,7 @@ const NAV_GROUPS: { label: string; keys: string[] }[] = [
   { label: "Genel", keys: ["DASHBOARD"] },
   {
     label: "Operasyon Verisi",
-    keys: ["PERSONEL", "PUANTAJ", "UYARI_KESINTI", "WHATSAPP", "UYE_ADEDI", "CAGRI_SURECI"],
+    keys: ["PERSONEL", "PUANTAJ", "UYARI_KESINTI", "WHATSAPP", "UYE_ADEDI", "CAGRI_SURECI", "FILES"],
   },
   { label: "Kalite & Eğitim", keys: ["EGITIM", "KALITE"] },
   { label: "Sistem", keys: ["USERS", "PERSONEL_ALIAS", "LOG"] },

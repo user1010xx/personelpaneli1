@@ -295,6 +295,7 @@ export async function importExcelRows(params: {
 
 export type ExcelUploadSummary = {
   id: string;
+  moduleKey: ModuleKey;
   fileName: string;
   rowCount: number;
   uploadedAt: string;
@@ -303,9 +304,9 @@ export type ExcelUploadSummary = {
   uploadedByName: string | null;
 };
 
-export async function listExcelUploads(moduleKey: ModuleKey): Promise<ExcelUploadSummary[]> {
+export async function listExcelUploads(moduleKey?: ModuleKey): Promise<ExcelUploadSummary[]> {
   const uploads = await prisma.excelUpload.findMany({
-    where: { moduleKey },
+    where: moduleKey ? { moduleKey } : { moduleKey: { in: ["UYE_ADEDI", "CAGRI_SURECI"] } },
     orderBy: { uploadedAt: "desc" },
     include: {
       uploadedBy: { select: { name: true } },
@@ -315,6 +316,7 @@ export async function listExcelUploads(moduleKey: ModuleKey): Promise<ExcelUploa
 
   return uploads.map((u) => ({
     id: u.id,
+    moduleKey: u.moduleKey,
     fileName: u.fileName,
     rowCount: u._count.rows,
     uploadedAt: u.uploadedAt.toISOString(),

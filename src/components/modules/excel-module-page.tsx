@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useRef, useState } from "react";
 import { Download, Upload } from "lucide-react";
@@ -16,7 +16,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { DataFilters } from "@/components/modules/data-filters";
 import { PeriodStatsBar } from "@/components/modules/period-stats";
 import { ExcelUploadDialog } from "@/components/modules/excel-upload-dialog";
-import { ExcelUploadsPanel } from "@/components/modules/excel-uploads-panel";
 import { monthYearToIsoRange } from "@/lib/month-year";
 
 type DataRow = {
@@ -46,7 +45,6 @@ export function ExcelModulePage({ moduleKey, title, description, canManage = fal
   const [message, setMessage] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [uploadsRefreshKey, setUploadsRefreshKey] = useState(0);
   const defaultPeriod = currentMonthYear();
   const [filters, setFilters] = usePersistedPageState(`excel-${moduleKey}`, {
     period: "daily" as Period,
@@ -151,13 +149,6 @@ export function ExcelModulePage({ moduleKey, title, description, canManage = fal
       new Date(periodFrom).getFullYear(),
     );
     invalidateModuleDataCaches(moduleKey);
-    setUploadsRefreshKey((k) => k + 1);
-  }
-
-  function onUploadDeleted() {
-    setMessage("Dosya ve ilişkili veriler silindi.");
-    invalidateModuleDataCaches(moduleKey);
-    setUploadsRefreshKey((k) => k + 1);
   }
 
   const uploadDefaults = monthYearToIsoRange(month, year);
@@ -219,14 +210,6 @@ export function ExcelModulePage({ moduleKey, title, description, canManage = fal
         <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-800">
           {message}
         </div>
-      ) : null}
-
-      {canManage ? (
-        <ExcelUploadsPanel
-          moduleKey={moduleKey}
-          refreshKey={uploadsRefreshKey}
-          onDeleted={onUploadDeleted}
-        />
       ) : null}
 
       <PeriodStatsBar stats={stats} activePeriod={period} onPeriodChange={(p) => patchFilters({ period: p })} />

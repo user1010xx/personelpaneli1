@@ -1,7 +1,15 @@
 import type { ModuleKey } from "@prisma/client";
 
 export type ModuleMeta = {
-  key: ModuleKey | "DASHBOARD" | "KALITE" | "EGITIM" | "USERS" | "LOG" | "PERSONEL_ALIAS";
+  key:
+    | ModuleKey
+    | "DASHBOARD"
+    | "KALITE"
+    | "EGITIM"
+    | "FILES"
+    | "USERS"
+    | "LOG"
+    | "PERSONEL_ALIAS";
   title: string;
   href: string;
   description: string;
@@ -81,6 +89,14 @@ export const NAV_MODULES: ModuleMeta[] = [
     description: "Excel ile yüklenen çağrı süreci verisi",
     source: "excel",
     icon: "phone",
+  },
+  {
+    key: "FILES",
+    title: "Dosyalar",
+    href: "/dosyalar",
+    description: "Yüklenen Excel dosyaları ve silme işlemleri",
+    source: "excel",
+    icon: "files",
   },
   {
     key: "USERS",

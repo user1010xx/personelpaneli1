@@ -1,4 +1,4 @@
-﻿import { ExcelModulePage } from "@/components/modules/excel-module-page";
+import { ExcelModulePage } from "@/components/modules/excel-module-page";
 import { getSessionUserFromDb } from "@/lib/auth";
 
 export default async function CagriSureciPage() {

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { ModuleKey } from "@prisma/client";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";

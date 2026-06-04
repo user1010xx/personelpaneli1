@@ -1,4 +1,4 @@
-﻿import { SheetModulePage } from "@/components/modules/sheet-module-page";
+import { SheetModulePage } from "@/components/modules/sheet-module-page";
 import { getSessionUserFromDb } from "@/lib/auth";
 import { hasGoogleServiceAccount } from "@/lib/google-env";
 

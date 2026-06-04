@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { ModuleKey } from "@prisma/client";
 import { listExcelUploads } from "@/lib/excel";
 import { EXCEL_MODULES } from "@/lib/modules";

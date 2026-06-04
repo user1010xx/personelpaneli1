@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { ModuleKey } from "@prisma/client";
 import { syncSheetModule } from "@/lib/google-sheets";

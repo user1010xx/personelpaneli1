@@ -287,6 +287,11 @@ function UserRow({
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setRole(user.role);
+    setActive(user.active);
+  }, [user.role, user.active]);
+
   async function save() {
     if (password && password.length < 6) {
       onMessage({ text: "Yeni şifre en az 6 karakter olmalı", type: "error" });

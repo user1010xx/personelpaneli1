@@ -112,7 +112,23 @@ export async function DELETE(
   }
 
   if (hardDelete) {
-    await prisma.user.delete({ where: { id } });
+    try {
+      await prisma.user.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        return NextResponse.json(
+          {
+            error:
+              "Bu kullanıcıya bağlı kayıtlar olduğu için kalıcı silinemez. Bunun yerine pasifleştirebilirsiniz.",
+          },
+          { status: 409 },
+        );
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        return NextResponse.json({ error: "Kullanıcı bulunamadı" }, { status: 404 });
+      }
+      throw error;
+    }
     logActivity(
       auth.user!,
       "KULLANICI_SIL",

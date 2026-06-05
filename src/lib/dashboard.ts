@@ -95,6 +95,20 @@ function avg(values: number[]) {
   return Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2));
 }
 
+export function avgByCount(values: number[], count: number) {
+  if (values.length === 0 || count <= 0) return 0;
+  return Number((values.reduce((a, b) => a + b, 0) / count).toFixed(2));
+}
+
+export function pickWhatsappAverageMetric(row: Record<string, unknown>) {
+  return findMetricInRow(row, [
+    "ortalama whatsapp cevaps",
+    "ortalama whatsapp",
+    "ortalama cevaps",
+    "ortalama",
+  ]);
+}
+
 export async function getDashboardData(params: {
   from?: Date | null;
   to?: Date | null;
@@ -132,6 +146,7 @@ export async function getDashboardData(params: {
     prisma.excelDataRow.findMany({
       where: { moduleKey: { in: ["UYE_ADEDI", "CAGRI_SURECI"] }, ...range },
       select: {
+        uploadId: true,
         moduleKey: true,
         personelName: true,
         recordDate: true,
@@ -171,6 +186,7 @@ export async function getDashboardData(params: {
       whatsapp: number[];
     }
   >();
+  const cagriPeriods = new Set<string>();
 
   const register = (rawName: string, aliases = globalAliases) => {
     const name = rawName.trim();
@@ -204,6 +220,8 @@ export async function getDashboardData(params: {
     }
 
     if (row.moduleKey === "CAGRI_SURECI") {
+      const periodKey = row.recordDate?.toISOString().slice(0, 10) ?? row.uploadId;
+      cagriPeriods.add(periodKey);
       b.konusmaSuresi.push(
         findMetricInRow(
           data,
@@ -222,11 +240,7 @@ export async function getDashboardData(params: {
     const key = register(name, whatsappAliases);
     if (!key) continue;
     const data = row.rowData as Record<string, unknown>;
-    const total = findMetricInRow(data, ["total whatsapp cevaps", "toplam whatsapp"]);
-    const metric =
-      total > 0
-        ? total
-        : findMetricInRow(data, ["ortalama whatsapp cevaps", "cevapsız", "cevapsiz", "whatsapp"]);
+    const metric = pickWhatsappAverageMetric(data);
     buckets.get(key)!.whatsapp.push(metric);
   }
 
@@ -243,8 +257,11 @@ export async function getDashboardData(params: {
     const person: DashboardPerson = {
       personelName,
       uyeAdedi: data.uye.reduce((total, value) => total + value, 0),
-      ortalamaAramaAdedi: avg(data.aramaAdedi),
-      ortalamaKonusmaSuresi: avg(data.konusmaSuresi),
+      ortalamaAramaAdedi: avgByCount(data.aramaAdedi, cagriPeriods.size || data.aramaAdedi.length),
+      ortalamaKonusmaSuresi: avgByCount(
+        data.konusmaSuresi,
+        cagriPeriods.size || data.konusmaSuresi.length,
+      ),
       ortalamaCagriPuani: avg(data.kalite),
       ortalamaWhatsappCevapsiz: avg(data.whatsapp),
     };

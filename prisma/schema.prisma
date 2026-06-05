@@ -26,6 +26,11 @@ enum TrainingRecordType {
   GERIBILDIRIM
 }
 
+enum SuggestionRequestType {
+  TALEP
+  ONERI
+}
+
 enum AliasScope {
   PERSONEL
   PUANTAJ
@@ -52,6 +57,23 @@ model User {
   excelUploads       ExcelUpload[]
   activityLogs       ActivityLog[]
   personelAliases    PersonelAlias[]
+  suggestionRequests SuggestionRequest[]
+}
+
+model SuggestionRequest {
+  id           String                @id @default(cuid())
+  type         SuggestionRequestType
+  reporterName String
+  subject      String
+  content      String
+  createdById  String?
+  createdBy    User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([type])
+  @@index([createdById])
+  @@index([createdAt])
 }
 
 model PersonelAlias {

@@ -38,7 +38,7 @@ const iconMap = {
 } as const;
 
 const NAV_GROUPS: { label: string; keys: string[] }[] = [
-  { label: "Genel", keys: ["DASHBOARD"] },
+  { label: "Genel", keys: ["DASHBOARD", "SUGGESTION_REQUEST"] },
   {
     label: "Operasyon Verisi",
     keys: ["PERSONEL", "PUANTAJ", "UYARI_KESINTI", "WHATSAPP", "UYE_ADEDI", "CAGRI_SURECI", "FILES"],

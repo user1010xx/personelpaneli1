@@ -9,7 +9,8 @@ export type ModuleMeta = {
     | "FILES"
     | "USERS"
     | "LOG"
-    | "PERSONEL_ALIAS";
+    | "PERSONEL_ALIAS"
+    | "SUGGESTION_REQUEST";
   title: string;
   href: string;
   description: string;
@@ -25,6 +26,14 @@ export const NAV_MODULES: ModuleMeta[] = [
     description: "Özet performans ve sıralamalar",
     source: "aggregate",
     icon: "layout-dashboard",
+  },
+  {
+    key: "SUGGESTION_REQUEST",
+    title: "Öneri - Talep",
+    href: "/oneri-talep",
+    description: "Tüm kullanıcıların öneri ve talep kayıtları",
+    source: "manual",
+    icon: "scroll-text",
   },
   {
     key: "PERSONEL",

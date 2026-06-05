@@ -18,7 +18,13 @@ const ALLOWED_EXTENSIONS = [".xlsx", ".xlsm", ".xls", ".xlsb"];
 const LEGACY_EXCEL_EXTENSIONS = [".xls", ".xlsb"];
 
 const MODULE_COLUMN_PROJECTIONS: Partial<
-  Record<ModuleKey, { columns: { index: number; label: string }[] }>
+  Record<
+    ModuleKey,
+    {
+      columns: { index: number; label: string }[];
+      rowFilter?: (row: string[]) => boolean;
+    }
+  >
 > = {
   CAGRI_SURECI: {
     columns: [
@@ -33,8 +39,22 @@ const MODULE_COLUMN_PROJECTIONS: Partial<
       { index: 7, label: "Üye Adedi" },
       { index: 8, label: "İlk Yat Adedi" },
     ],
+    rowFilter: (row) => matchesManagerFilter(row[1], process.env.UYE_ADEDI_MANAGER_FILTER ?? "BULUT"),
   },
 };
+
+function normalizeFilterValue(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleUpperCase("tr-TR");
+}
+
+function matchesManagerFilter(value: unknown, expected: string) {
+  const manager = normalizeFilterValue(value);
+  const target = normalizeFilterValue(expected);
+  return Boolean(target) && manager === target;
+}
 
 function cellToString(value: ExcelJS.CellValue): string {
   if (value == null) return "";
@@ -138,6 +158,7 @@ export async function parseWorkbookBuffer(
     const rows = matrix
       .slice(dataStart)
       .filter((row) => String(row[personelColumn.index] ?? "").trim() !== "")
+      .filter((row) => projection.rowFilter?.(row) ?? true)
       .map((row) =>
         Object.fromEntries(
           projection.columns.map((column) => [

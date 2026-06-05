@@ -36,6 +36,14 @@ function generatePassword(length = 10) {
   return Array.from(values, (value) => alphabet[value % alphabet.length]).join("");
 }
 
+async function readJson(res: Response) {
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
+
 export function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [sheetForms, setSheetForms] = useState<Record<string, { spreadsheetId: string; sheetName: string }>>({});
@@ -304,7 +312,7 @@ function UserRow({
       credentials: "include",
       body: JSON.stringify({ role, active, ...(password ? { password } : {}) }),
     });
-    const json = await res.json();
+    const json = await readJson(res);
     setSaving(false);
     if (!res.ok) {
       onMessage({ text: json.error ?? "Güncelleme başarısız", type: "error" });
@@ -321,7 +329,7 @@ function UserRow({
       method: "DELETE",
       credentials: "include",
     });
-    const json = await res.json();
+    const json = await readJson(res);
     if (!res.ok) {
       onMessage({ text: json.error ?? "İşlem başarısız", type: "error" });
       return;
@@ -336,7 +344,7 @@ function UserRow({
       method: "DELETE",
       credentials: "include",
     });
-    const json = await res.json();
+    const json = await readJson(res);
     if (!res.ok) {
       onMessage({ text: json.error ?? "Kullanıcı silinemedi", type: "error" });
       return;

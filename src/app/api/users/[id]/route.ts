@@ -115,11 +115,14 @@ export async function DELETE(
     try {
       await prisma.user.delete({ where: { id } });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2003" || error.code === "P2014")
+      ) {
         return NextResponse.json(
           {
             error:
-              "Bu kullanıcıya bağlı kayıtlar olduğu için kalıcı silinemez. Bunun yerine pasifleştirebilirsiniz.",
+              "Bu kullanıcıya bağlı kayıtlar olduğu için silme işlemi tamamlanamadı.",
           },
           { status: 409 },
         );
@@ -127,7 +130,8 @@ export async function DELETE(
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
         return NextResponse.json({ error: "Kullanıcı bulunamadı" }, { status: 404 });
       }
-      throw error;
+      console.error("[users DELETE]", error);
+      return NextResponse.json({ error: "Kullanıcı silinemedi" }, { status: 500 });
     }
     logActivity(
       auth.user!,

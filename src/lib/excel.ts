@@ -21,27 +21,75 @@ const MODULE_COLUMN_PROJECTIONS: Partial<
   Record<
     ModuleKey,
     {
-      columns: { index: number; label: string }[];
+      columns: { index: number; label: string; aliases?: string[] }[];
       rowFilter?: (row: string[]) => boolean;
     }
   >
 > = {
   CAGRI_SURECI: {
     columns: [
-      { index: 0, label: "Personel Adı" },
-      { index: 3, label: "Arama Adedi" },
+      { index: 0, label: "Personel Adı", aliases: ["Dahili Adı", "Dahili Ad"] },
+      { index: 3, label: "Arama Adedi", aliases: ["Toplam Arama Adedi", "Arama Sayısı"] },
       { index: 2, label: "Konuşma Süresi" },
     ],
   },
   UYE_ADEDI: {
     columns: [
-      { index: 0, label: "Personel Adı" },
+      { index: 0, label: "Personel Adı", aliases: ["Personel"] },
       { index: 7, label: "Üye Adedi" },
       { index: 8, label: "İlk Yat Adedi" },
     ],
     rowFilter: (row) => matchesManagerFilter(row[1], process.env.UYE_ADEDI_MANAGER_FILTER ?? "BULUT"),
   },
 };
+
+function normalizeHeaderValue(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[çğıİşöü]/g, (char) => {
+      const map: Record<string, string> = {
+        ç: "c",
+        ğ: "g",
+        ı: "i",
+        İ: "i",
+        ş: "s",
+        ö: "o",
+        ü: "u",
+      };
+      return map[char] ?? char;
+    });
+}
+
+function isProjectionHeaderCell(
+  value: unknown,
+  column: { label: string; aliases?: string[] },
+) {
+  const normalized = normalizeHeaderValue(value);
+  return [column.label, ...(column.aliases ?? [])].some(
+    (label) => normalizeHeaderValue(label) === normalized,
+  );
+}
+
+function isProjectionHeaderRow(
+  row: string[],
+  projection: { columns: { index: number; label: string; aliases?: string[] }[] },
+) {
+  const matches = projection.columns.filter((column) =>
+    isProjectionHeaderCell(row[column.index], column),
+  ).length;
+  return matches >= 2 || isProjectionHeaderCell(row[projection.columns[0].index], projection.columns[0]);
+}
+
+function projectedDataStart(
+  matrix: string[][],
+  fallbackStart: number,
+  projection: { columns: { index: number; label: string; aliases?: string[] }[] },
+) {
+  const headerRowIndex = matrix.findIndex((row) => isProjectionHeaderRow(row, projection));
+  return headerRowIndex >= 0 ? headerRowIndex + 1 : fallbackStart;
+}
 
 function normalizeFilterValue(value: unknown) {
   return String(value ?? "")
@@ -52,8 +100,11 @@ function normalizeFilterValue(value: unknown) {
 
 function matchesManagerFilter(value: unknown, expected: string) {
   const manager = normalizeFilterValue(value);
-  const target = normalizeFilterValue(expected);
-  return Boolean(target) && manager === target;
+  const targets = expected
+    .split(",")
+    .map(normalizeFilterValue)
+    .filter(Boolean);
+  return targets.some((target) => manager === target || manager.includes(target));
 }
 
 function cellToString(value: ExcelJS.CellValue): string {
@@ -154,10 +205,12 @@ export async function parseWorkbookBuffer(
       throw new Error("Modül kolon eşleştirmesi eksik");
     }
     const personelColumn = projection.columns[0];
+    const projectionDataStart = projectedDataStart(matrix, dataStart, projection);
 
     const rows = matrix
-      .slice(dataStart)
+      .slice(projectionDataStart)
       .filter((row) => String(row[personelColumn.index] ?? "").trim() !== "")
+      .filter((row) => !isProjectionHeaderRow(row, projection))
       .filter((row) => projection.rowFilter?.(row) ?? true)
       .map((row) =>
         Object.fromEntries(

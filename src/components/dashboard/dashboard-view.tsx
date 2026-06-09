@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 type Person = {
   personelName: string;
   uyeAdedi: number;
+  ilkYatAdedi: number;
   ortalamaAramaAdedi: number;
   ortalamaKonusmaSuresi: number;
   ortalamaCagriPuani: number;
@@ -69,6 +70,7 @@ const LEADER_CARDS = [
 const COLUMNS: { key: SortKey; label: string; format?: (v: number) => string }[] = [
   { key: "personelName", label: "Personel Adı" },
   { key: "uyeAdedi", label: "Üye Adedi" },
+  { key: "ilkYatAdedi", label: "İlk Yat Adedi" },
   { key: "ortalamaAramaAdedi", label: "Ortalama Arama Adedi" },
   {
     key: "ortalamaKonusmaSuresi",
@@ -305,13 +307,13 @@ export function DashboardView() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     Seçilen aralıkta veri yok. Modüllere veri ekleyip tekrar deneyin.
                   </td>
                 </tr>
@@ -320,6 +322,7 @@ export function DashboardView() {
                   <tr key={person.personelName}>
                     <td className="!font-semibold !text-slate-900">{person.personelName}</td>
                     <td className="tabular-nums">{person.uyeAdedi}</td>
+                    <td className="tabular-nums">{person.ilkYatAdedi}</td>
                     <td className="tabular-nums">{person.ortalamaAramaAdedi}</td>
                     <td className="tabular-nums">{formatDuration(person.ortalamaKonusmaSuresi)}</td>
                     <td className="tabular-nums">{person.ortalamaCagriPuani}</td>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avgByCount, pickWhatsappAverageMetric } from "@/lib/dashboard";
+import { avgByCount, pickIlkYatMetric, pickWhatsappAverageMetric } from "@/lib/dashboard";
 
 describe("dashboard metrics", () => {
   it("uses explicit WhatsApp average instead of total", () => {
@@ -13,5 +13,14 @@ describe("dashboard metrics", () => {
 
   it("averages call totals by loaded period count", () => {
     expect(avgByCount([100, 200, 300], 3)).toBe(200);
+  });
+
+  it("reads first deposit count separately from member count", () => {
+    expect(
+      pickIlkYatMetric({
+        "Üye Adedi": "56",
+        "İlk Yat Adedi": "3",
+      }),
+    ).toBe(3);
   });
 });

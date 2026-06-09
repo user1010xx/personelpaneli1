@@ -13,6 +13,7 @@ const DASHBOARD_ROW_LIMIT = 25_000;
 export type DashboardPerson = {
   personelName: string;
   uyeAdedi: number;
+  ilkYatAdedi: number;
   ortalamaAramaAdedi: number;
   ortalamaKonusmaSuresi: number;
   ortalamaCagriPuani: number;
@@ -109,6 +110,17 @@ export function pickWhatsappAverageMetric(row: Record<string, unknown>) {
   ]);
 }
 
+export function pickIlkYatMetric(row: Record<string, unknown>) {
+  return findMetricInRow(row, [
+    "ilk yat adedi",
+    "ilk yat",
+    "ilk yatırım",
+    "ilk yatirim",
+    "first deposit",
+    "deposit",
+  ]);
+}
+
 export async function getDashboardData(params: {
   from?: Date | null;
   to?: Date | null;
@@ -180,6 +192,7 @@ export async function getDashboardData(params: {
     string,
     {
       uye: number[];
+      ilkYat: number[];
       aramaAdedi: number[];
       konusmaSuresi: number[];
       kalite: number[];
@@ -197,7 +210,14 @@ export async function getDashboardData(params: {
       displayNames.set(key, displayPersonelName(resolvedName));
     }
     if (!buckets.has(key)) {
-      buckets.set(key, { uye: [], aramaAdedi: [], konusmaSuresi: [], kalite: [], whatsapp: [] });
+      buckets.set(key, {
+        uye: [],
+        ilkYat: [],
+        aramaAdedi: [],
+        konusmaSuresi: [],
+        kalite: [],
+        whatsapp: [],
+      });
     }
     return key;
   };
@@ -217,6 +237,7 @@ export async function getDashboardData(params: {
 
     if (row.moduleKey === "UYE_ADEDI") {
       b.uye.push(findMetricInRow(data, ["üye", "uye", "aded", "adet", "count", "toplam"]));
+      b.ilkYat.push(pickIlkYatMetric(data));
     }
 
     if (row.moduleKey === "CAGRI_SURECI") {
@@ -257,6 +278,7 @@ export async function getDashboardData(params: {
     const person: DashboardPerson = {
       personelName,
       uyeAdedi: data.uye.reduce((total, value) => total + value, 0),
+      ilkYatAdedi: data.ilkYat.reduce((total, value) => total + value, 0),
       ortalamaAramaAdedi: avgByCount(data.aramaAdedi, cagriPeriods.size || data.aramaAdedi.length),
       ortalamaKonusmaSuresi: avgByCount(
         data.konusmaSuresi,

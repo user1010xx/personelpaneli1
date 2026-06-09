@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     data.rows.map((p) => ({
       personel_adi: p.personelName,
       uye_adedi: p.uyeAdedi,
+      ilk_yat_adedi: p.ilkYatAdedi,
       ortalama_arama_adedi: p.ortalamaAramaAdedi,
       ortalama_konusma_suresi: formatDuration(p.ortalamaKonusmaSuresi),
       ortalama_cagri_puani: p.ortalamaCagriPuani,

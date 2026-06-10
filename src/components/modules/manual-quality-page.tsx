@@ -74,6 +74,8 @@ export function ManualQualityPage() {
     search: "",
     month: defaultPeriod.month,
     year: defaultPeriod.year,
+    customFrom: "",
+    customTo: "",
     sortDir: "desc" as "asc" | "desc",
     period: "daily" as Period,
   });
@@ -83,16 +85,31 @@ export function ManualQualityPage() {
     filters,
     patchFilters,
   );
+  const hasCustomRange = Boolean(filters.customFrom || filters.customTo);
+  const effectiveFrom = filters.customFrom || from;
+  const effectiveTo = filters.customTo || to;
+  const effectivePeriodLabel =
+    filters.customFrom && filters.customTo
+      ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
+      : filters.customFrom
+        ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(to).toLocaleDateString("tr-TR")}`
+        : filters.customTo
+          ? `${new Date(from).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
+          : periodLabel;
+  const setMonthYearAndClearRange = (nextMonth: number, nextYear: number) => {
+    setMonthYear(nextMonth, nextYear);
+    patchFilters({ customFrom: "", customTo: "" });
+  };
   const params = useMemo(() => {
     const p = new URLSearchParams({
       search: filters.search,
       sortDir: filters.sortDir,
       period: filters.period,
-      from,
-      to,
+      from: effectiveFrom,
+      to: effectiveTo,
     });
     return p;
-  }, [filters, from, to]);
+  }, [effectiveFrom, effectiveTo, filters]);
 
   const { data, showSkeleton, refreshing, error } = usePanelFetch<QualityApiResponse>(
     "/api/quality",
@@ -202,8 +219,8 @@ export function ManualQualityPage() {
 
   function exportExcel() {
     const params = new URLSearchParams();
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
+    if (effectiveFrom) params.set("from", effectiveFrom);
+    if (effectiveTo) params.set("to", effectiveTo);
     if (search) params.set("search", search);
     window.open(`/api/quality/export?${params}`, "_blank");
   }
@@ -358,9 +375,38 @@ export function ManualQualityPage() {
         </div>
         <div className="border-b border-slate-100 px-5 py-4">
           <p className="mb-3 text-sm text-slate-500">
-            Seçilen dönem: <span className="font-semibold text-slate-800">{periodLabel}</span>
+            Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
           </p>
-          <MonthYearPicker month={month} year={year} onChange={setMonthYear} />
+          <div className="grid gap-3 lg:grid-cols-[minmax(220px,320px)_minmax(220px,1fr)_auto] lg:items-end">
+            <MonthYearPicker month={month} year={year} onChange={setMonthYearAndClearRange} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="filter-label">Başlangıç</span>
+                <Input
+                  type="date"
+                  value={filters.customFrom}
+                  onChange={(e) => patchFilters({ customFrom: e.target.value })}
+                />
+              </label>
+              <label className="block">
+                <span className="filter-label">Bitiş</span>
+                <Input
+                  type="date"
+                  value={filters.customTo}
+                  onChange={(e) => patchFilters({ customTo: e.target.value })}
+                />
+              </label>
+            </div>
+            {hasCustomRange ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => patchFilters({ customFrom: "", customTo: "" })}
+              >
+                Aylık göster
+              </Button>
+            ) : null}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -434,7 +480,7 @@ export function ManualQualityPage() {
         onSearchChange={(v) => patchFilters({ search: v })}
         month={month}
         year={year}
-        onMonthYearChange={setMonthYear}
+        onMonthYearChange={setMonthYearAndClearRange}
         sortBy="date"
         sortDir={sortDir}
         onSortByChange={() => undefined}

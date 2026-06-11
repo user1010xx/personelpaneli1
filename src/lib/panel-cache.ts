@@ -57,6 +57,8 @@ export function affectedPrefixesForModule(moduleKey: string) {
       return ["/api/quality", "/api/dashboard"];
     case "EGITIM":
       return ["/api/training"];
+    case "INITIATIVE_WORK":
+      return ["/api/initiative-work"];
     case "PERSONEL_ALIAS":
       return ["/api/dashboard", "/api/data/", "/api/quality", "/api/training"];
     default:

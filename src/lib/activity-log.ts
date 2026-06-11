@@ -18,6 +18,7 @@ export const MODULE_TITLES: Record<string, string> = {
   CAGRI_SURECI: "Çağrı Süreci",
   EGITIM: "Eğitim Geribildirim",
   KALITE: "Kalite Puanlaması",
+  INITIATIVE_WORK: "İnsiyatif Çalışma",
   USERS: "Kullanıcı Yönetimi",
   PERSONEL_ALIAS: "Personel Eşleştirme",
   LOG: "İşlem Logu",

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   CalendarClock,
   GraduationCap,
   LayoutDashboard,
@@ -35,6 +36,7 @@ const iconMap = {
   files: Files,
   shield: Shield,
   "scroll-text": ScrollText,
+  briefcase: BriefcaseBusiness,
 } as const;
 
 const NAV_GROUPS: { label: string; keys: string[] }[] = [
@@ -43,7 +45,7 @@ const NAV_GROUPS: { label: string; keys: string[] }[] = [
     label: "Operasyon Verisi",
     keys: ["PERSONEL", "PUANTAJ", "UYARI_KESINTI", "WHATSAPP", "UYE_ADEDI", "CAGRI_SURECI", "FILES"],
   },
-  { label: "Kalite & Eğitim", keys: ["EGITIM", "KALITE"] },
+  { label: "Kalite & Eğitim", keys: ["EGITIM", "KALITE", "INITIATIVE_WORK"] },
   { label: "Sistem", keys: ["USERS", "PERSONEL_ALIAS", "LOG"] },
 ];
 

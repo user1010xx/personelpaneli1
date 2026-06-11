@@ -10,7 +10,8 @@ export type ModuleMeta = {
     | "USERS"
     | "LOG"
     | "PERSONEL_ALIAS"
-    | "SUGGESTION_REQUEST";
+    | "SUGGESTION_REQUEST"
+    | "INITIATIVE_WORK";
   title: string;
   href: string;
   description: string;
@@ -82,6 +83,14 @@ export const NAV_MODULES: ModuleMeta[] = [
     description: "Manuel kalite puan kayıtları",
     source: "manual",
     icon: "star",
+  },
+  {
+    key: "INITIATIVE_WORK",
+    title: "İnsiyatif Çalışma",
+    href: "/insiyatif-calisma",
+    description: "Kendi insiyatifi ile çalışan personel kayıtları",
+    source: "manual",
+    icon: "briefcase",
   },
   {
     key: "UYE_ADEDI",

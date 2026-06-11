@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseDate, requireApiUser } from "@/lib/api-helpers";
 import {
-  formatWorkDuration,
+  buildInitiativeWorkSummary,
   initiativeWorkDateRange,
 } from "@/lib/initiative-work";
 import { rowsToWorkbook } from "@/lib/excel";
@@ -28,15 +28,17 @@ export async function GET(request: Request) {
   });
 
   const buffer = await rowsToWorkbook(
-    rows.map((row) => ({
-      personel_adi: row.personelName,
-      calistigi_tarih: row.recordDate.toISOString().slice(0, 10),
-      arama_adedi: row.callCount,
-      konusma_suresi: formatWorkDuration(row.talkDurationSeconds),
-      uye_adedi: row.memberCount,
-      eklenme_tarihi: row.createdAt.toLocaleString("tr-TR"),
-    })),
-    "Insiyatif Calisma",
+    [
+      ...buildInitiativeWorkSummary(rows).map((row) => ({
+        personel_adi: row.personelName,
+        adet: row.calismaAdedi,
+      })),
+      {
+        personel_adi: "Toplam",
+        adet: rows.length,
+      },
+    ],
+    "Calisma Ozeti",
   );
 
   return new NextResponse(buffer, {

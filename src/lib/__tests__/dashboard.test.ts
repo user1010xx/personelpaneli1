@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { avgByCount, pickIlkYatMetric, pickWhatsappAverageMetric } from "@/lib/dashboard";
+import {
+  avgByCount,
+  dashboardWeekKey,
+  pickIlkYatMetric,
+  pickWhatsappAverageMetric,
+} from "@/lib/dashboard";
 
 describe("dashboard metrics", () => {
   it("uses explicit WhatsApp average instead of total", () => {
@@ -22,5 +27,13 @@ describe("dashboard metrics", () => {
         "İlk Yat Adedi": "3",
       }),
     ).toBe(3);
+  });
+
+  it("groups dashboard leader dates by fixed monthly week buckets", () => {
+    expect(dashboardWeekKey(new Date(2026, 5, 1))).toBe("2026-06-01");
+    expect(dashboardWeekKey(new Date(2026, 5, 8))).toBe("2026-06-08");
+    expect(dashboardWeekKey(new Date(2026, 5, 15))).toBe("2026-06-15");
+    expect(dashboardWeekKey(new Date(2026, 5, 22))).toBe("2026-06-22");
+    expect(dashboardWeekKey(new Date(2026, 5, 30))).toBe("2026-06-22");
   });
 });

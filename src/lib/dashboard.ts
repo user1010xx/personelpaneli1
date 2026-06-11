@@ -10,6 +10,15 @@ import {
 
 const DASHBOARD_ROW_LIMIT = 25_000;
 
+type MetricBucket = {
+  uye: number[];
+  ilkYat: number[];
+  aramaAdedi: number[];
+  konusmaSuresi: number[];
+  kalite: number[];
+  whatsapp: number[];
+};
+
 export type DashboardPerson = {
   personelName: string;
   uyeAdedi: number;
@@ -59,7 +68,7 @@ export function formatDuration(seconds: number) {
   return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
 }
 
-function topLeaders(
+function topUniqueLeaders(
   rows: DashboardPerson[],
   pick: (p: DashboardPerson) => number,
   format: (v: number) => string,
@@ -71,11 +80,60 @@ function topLeaders(
     .filter((p) => p.value > 0)
     .sort((a, b) => (order === "desc" ? b.value - a.value : a.value - b.value));
 
-  return sorted.slice(0, limit).map((item) => ({
-    personelName: item.personelName,
-    value: item.value,
-    display: format(item.value),
-  }));
+  const picked = new Set<string>();
+  const result: LeaderEntry[] = [];
+  for (const item of sorted) {
+    if (picked.has(item.personelName)) continue;
+    picked.add(item.personelName);
+    result.push({
+      personelName: item.personelName,
+      value: item.value,
+      display: format(item.value),
+    });
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+function createMetricBucket(): MetricBucket {
+  return {
+    uye: [],
+    ilkYat: [],
+    aramaAdedi: [],
+    konusmaSuresi: [],
+    kalite: [],
+    whatsapp: [],
+  };
+}
+
+export function dashboardWeekKey(date: Date) {
+  const day = date.getDate();
+  const startDay = day <= 7 ? 1 : day <= 14 ? 8 : day <= 21 ? 15 : 22;
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${String(startDay).padStart(2, "0")}`;
+}
+
+function rowDateForWeek(row: { recordDate: Date | null; createdAt?: Date }) {
+  return row.recordDate ?? row.createdAt ?? null;
+}
+
+function bucketToDashboardPerson(
+  personelName: string,
+  data: MetricBucket,
+  cagriPeriodCount: number,
+): DashboardPerson {
+  return {
+    personelName,
+    uyeAdedi: data.uye.reduce((total, value) => total + value, 0),
+    ilkYatAdedi: data.ilkYat.reduce((total, value) => total + value, 0),
+    ortalamaAramaAdedi: avgByCount(data.aramaAdedi, cagriPeriodCount || data.aramaAdedi.length),
+    ortalamaKonusmaSuresi: avgByCount(
+      data.konusmaSuresi,
+      cagriPeriodCount || data.konusmaSuresi.length,
+    ),
+    ortalamaCagriPuani: avg(data.kalite),
+    ortalamaWhatsappCevapsiz: avg(data.whatsapp),
+  };
 }
 
 function parsePersonelFromRow(rowData: unknown) {
@@ -188,18 +246,10 @@ export async function getDashboardData(params: {
   ]);
 
   const displayNames = new Map<string, string>();
-  const buckets = new Map<
-    string,
-    {
-      uye: number[];
-      ilkYat: number[];
-      aramaAdedi: number[];
-      konusmaSuresi: number[];
-      kalite: number[];
-      whatsapp: number[];
-    }
-  >();
+  const buckets = new Map<string, MetricBucket>();
+  const weeklyBuckets = new Map<string, MetricBucket>();
   const cagriPeriods = new Set<string>();
+  const weeklyCagriPeriods = new Map<string, Set<string>>();
 
   const register = (rawName: string, aliases = globalAliases) => {
     const name = rawName.trim();
@@ -210,16 +260,17 @@ export async function getDashboardData(params: {
       displayNames.set(key, displayPersonelName(resolvedName));
     }
     if (!buckets.has(key)) {
-      buckets.set(key, {
-        uye: [],
-        ilkYat: [],
-        aramaAdedi: [],
-        konusmaSuresi: [],
-        kalite: [],
-        whatsapp: [],
-      });
+      buckets.set(key, createMetricBucket());
     }
     return key;
+  };
+
+  const getWeeklyBucket = (weekKey: string, personKey: string) => {
+    const key = `${weekKey}::${personKey}`;
+    if (!weeklyBuckets.has(key)) {
+      weeklyBuckets.set(key, createMetricBucket());
+    }
+    return weeklyBuckets.get(key)!;
   };
 
   for (const row of personelRows) {
@@ -234,25 +285,37 @@ export async function getDashboardData(params: {
     if (!key) continue;
     const data = row.rowData as Record<string, unknown>;
     const b = buckets.get(key)!;
+    const metricDate = rowDateForWeek(row);
+    const weeklyBucket = metricDate ? getWeeklyBucket(dashboardWeekKey(metricDate), key) : null;
 
     if (row.moduleKey === "UYE_ADEDI") {
-      b.uye.push(findMetricInRow(data, ["üye", "uye", "aded", "adet", "count", "toplam"]));
-      b.ilkYat.push(pickIlkYatMetric(data));
+      const uye = findMetricInRow(data, ["üye", "uye", "aded", "adet", "count", "toplam"]);
+      const ilkYat = pickIlkYatMetric(data);
+      b.uye.push(uye);
+      b.ilkYat.push(ilkYat);
+      weeklyBucket?.uye.push(uye);
+      weeklyBucket?.ilkYat.push(ilkYat);
     }
 
     if (row.moduleKey === "CAGRI_SURECI") {
       const periodKey = row.recordDate?.toISOString().slice(0, 10) ?? row.uploadId;
+      const weekKey = metricDate ? dashboardWeekKey(metricDate) : null;
       cagriPeriods.add(periodKey);
-      b.konusmaSuresi.push(
-        findMetricInRow(
-          data,
-          ["süre", "sure", "konuşma", "konusma", "duration", "saniye", "dakika"],
-          true,
-        ),
+      if (weekKey) {
+        const periodSet = weeklyCagriPeriods.get(weekKey) ?? new Set<string>();
+        periodSet.add(periodKey);
+        weeklyCagriPeriods.set(weekKey, periodSet);
+      }
+      const konusmaSuresi = findMetricInRow(
+        data,
+        ["süre", "sure", "konuşma", "konusma", "duration", "saniye", "dakika"],
+        true,
       );
-      b.aramaAdedi.push(
-        findMetricInRow(data, ["arama", "adet", "call", "count", "çağrı", "cagri", "toplam"]),
-      );
+      const aramaAdedi = findMetricInRow(data, ["arama", "adet", "call", "count", "çağrı", "cagri", "toplam"]);
+      b.konusmaSuresi.push(konusmaSuresi);
+      b.aramaAdedi.push(aramaAdedi);
+      weeklyBucket?.konusmaSuresi.push(konusmaSuresi);
+      weeklyBucket?.aramaAdedi.push(aramaAdedi);
     }
   }
 
@@ -263,30 +326,24 @@ export async function getDashboardData(params: {
     const data = row.rowData as Record<string, unknown>;
     const metric = pickWhatsappAverageMetric(data);
     buckets.get(key)!.whatsapp.push(metric);
+    const metricDate = rowDateForWeek(row);
+    if (metricDate) {
+      getWeeklyBucket(dashboardWeekKey(metricDate), key).whatsapp.push(metric);
+    }
   }
 
   for (const row of qualityRows) {
     const key = register(row.personelName, kaliteAliases);
     if (!key) continue;
     buckets.get(key)!.kalite.push(row.score);
+    getWeeklyBucket(dashboardWeekKey(row.recordDate), key).kalite.push(row.score);
   }
 
   const rows: DashboardPerson[] = [];
 
   for (const [key, data] of buckets) {
     const personelName = displayNames.get(key) ?? key;
-    const person: DashboardPerson = {
-      personelName,
-      uyeAdedi: data.uye.reduce((total, value) => total + value, 0),
-      ilkYatAdedi: data.ilkYat.reduce((total, value) => total + value, 0),
-      ortalamaAramaAdedi: avgByCount(data.aramaAdedi, cagriPeriods.size || data.aramaAdedi.length),
-      ortalamaKonusmaSuresi: avgByCount(
-        data.konusmaSuresi,
-        cagriPeriods.size || data.konusmaSuresi.length,
-      ),
-      ortalamaCagriPuani: avg(data.kalite),
-      ortalamaWhatsappCevapsiz: avg(data.whatsapp),
-    };
+    const person = bucketToDashboardPerson(personelName, data, cagriPeriods.size);
 
     if (search && !personelName.toLocaleLowerCase("tr-TR").includes(search)) {
       continue;
@@ -297,16 +354,29 @@ export async function getDashboardData(params: {
 
   rows.sort((a, b) => a.personelName.localeCompare(b.personelName, "tr"));
 
+  const weeklyRows: DashboardPerson[] = [];
+  for (const [bucketKey, data] of weeklyBuckets) {
+    const separatorIndex = bucketKey.indexOf("::");
+    const weekKey = bucketKey.slice(0, separatorIndex);
+    const personKey = bucketKey.slice(separatorIndex + 2);
+    const personelName = displayNames.get(personKey) ?? personKey;
+    if (search && !personelName.toLocaleLowerCase("tr-TR").includes(search)) {
+      continue;
+    }
+    weeklyRows.push(
+      bucketToDashboardPerson(personelName, data, weeklyCagriPeriods.get(weekKey)?.size ?? 0),
+    );
+  }
+
   const leaders: DashboardLeaders = {
-    uyelik: topLeaders(rows, (p) => p.uyeAdedi, (v) => `${Math.round(v)} üye`),
-    cagriPuani: topLeaders(rows, (p) => p.ortalamaCagriPuani, (v) => `${v.toFixed(1)} puan`),
-    konusmaSuresi: topLeaders(rows, (p) => p.ortalamaKonusmaSuresi, (v) => formatDuration(v)),
-    aramaAdedi: topLeaders(rows, (p) => p.ortalamaAramaAdedi, (v) => `${Math.round(v)} arama`),
-    whatsappCevapsiz: topLeaders(
-      rows,
+    uyelik: topUniqueLeaders(weeklyRows, (p) => p.uyeAdedi, (v) => `${Math.round(v)} üye`),
+    cagriPuani: topUniqueLeaders(weeklyRows, (p) => p.ortalamaCagriPuani, (v) => `${v.toFixed(1)} puan`),
+    konusmaSuresi: topUniqueLeaders(weeklyRows, (p) => p.ortalamaKonusmaSuresi, (v) => formatDuration(v)),
+    aramaAdedi: topUniqueLeaders(weeklyRows, (p) => p.ortalamaAramaAdedi, (v) => `${Math.round(v)} arama`),
+    whatsappCevapsiz: topUniqueLeaders(
+      weeklyRows,
       (p) => p.ortalamaWhatsappCevapsiz,
       (v) => `${Math.round(v)} cevapsız`,
-      "asc",
     ),
   };
 

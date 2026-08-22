@@ -18,11 +18,16 @@ import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
-import type { ExampleCallPeriodCounts } from "@/lib/example-call";
+import {
+  EXAMPLE_CALL_TYPE_LABELS,
+  type ExampleCallPeriodCounts,
+  type ExampleCallType,
+} from "@/lib/example-call";
 
 type Row = {
   id: string;
   personelName: string;
+  recordType: ExampleCallType;
   phone: string;
   recordDate: string;
   createdAt: string;
@@ -30,7 +35,8 @@ type Row = {
 
 type SummaryRow = {
   personelName: string;
-  adet: number;
+  ornekCagriAdedi: number;
+  motivasyonAdedi: number;
 };
 
 type ApiResponse = {
@@ -46,6 +52,7 @@ type ApiResponse = {
 };
 
 const emptyForm = () => ({
+  recordType: "ORNEK_CAGRI" as ExampleCallType,
   personelName: "",
   recordDate: new Date().toISOString().slice(0, 10),
   phone: "",
@@ -124,11 +131,13 @@ export function ExampleCallPage() {
   const summary = useMemo(() => data?.summary ?? [], [data?.summary]);
   const periodCounts = data?.periodCounts;
   const { search, period } = filters;
-  const summarySort = useClientTableSort<"personelName" | "adet">("personelName", "asc");
-  const rowSort = useClientTableSort<"createdAt" | "recordDate" | "personelName" | "phone">(
-    "recordDate",
-    "desc",
+  const summarySort = useClientTableSort<"personelName" | "ornekCagriAdedi" | "motivasyonAdedi">(
+    "personelName",
+    "asc",
   );
+  const rowSort = useClientTableSort<
+    "createdAt" | "recordDate" | "personelName" | "phone" | "recordType"
+  >("recordDate", "desc");
 
   const sortedSummary = useMemo(() => summarySort.sort(summary), [summary, summarySort]);
   const sortedRows = useMemo(() => rowSort.sort(rows), [rows, rowSort]);
@@ -162,10 +171,14 @@ export function ExampleCallPage() {
     };
   }, [formOpen]);
 
-  const summaryTotal = useMemo(
-    () => summary.reduce((total, row) => total + row.adet, 0),
+  const summaryTotals = useMemo(
+    () => ({
+      ornekCagri: summary.reduce((total, row) => total + row.ornekCagriAdedi, 0),
+      motivasyon: summary.reduce((total, row) => total + row.motivasyonAdedi, 0),
+    }),
     [summary],
   );
+  const summaryTotal = summaryTotals.ornekCagri + summaryTotals.motivasyon;
 
   function closeForm() {
     setFormOpen(false);
@@ -182,6 +195,7 @@ export function ExampleCallPage() {
   function openEditForm(row: Row) {
     setEditingId(row.id);
     setForm({
+      recordType: row.recordType ?? "ORNEK_CAGRI",
       personelName: row.personelName,
       recordDate: row.recordDate.slice(0, 10),
       phone: row.phone,
@@ -262,7 +276,9 @@ export function ExampleCallPage() {
                         <h2 className="text-base font-semibold text-slate-900">
                           {editingId ? "Kaydı Düzenle" : "Yeni Kayıt"}
                         </h2>
-                        <p className="mt-0.5 text-xs text-slate-500">Personel, tarih ve numara girin</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Alan seçin, ardından personel ve tarih girin
+                        </p>
                       </div>
                       <button
                         type="button"
@@ -274,6 +290,24 @@ export function ExampleCallPage() {
                       </button>
                     </div>
                     <div className="space-y-3">
+                      <div>
+                        <Label>Alan</Label>
+                        <select
+                          className="panel-input"
+                          value={form.recordType}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              recordType: e.target.value as ExampleCallType,
+                              phone: e.target.value === "MOTIVASYON" ? "" : form.phone,
+                            })
+                          }
+                          required
+                        >
+                          <option value="ORNEK_CAGRI">Örnek Çağrı</option>
+                          <option value="MOTIVASYON">Motivasyon</option>
+                        </select>
+                      </div>
                       <div>
                         <Label>Personel Adı</Label>
                         <Input
@@ -292,14 +326,16 @@ export function ExampleCallPage() {
                           required
                         />
                       </div>
-                      <div>
-                        <Label>Numara</Label>
-                        <Input
-                          value={form.phone}
-                          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                          required
-                        />
-                      </div>
+                      {form.recordType === "ORNEK_CAGRI" ? (
+                        <div>
+                          <Label>Numara</Label>
+                          <Input
+                            value={form.phone}
+                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                            required
+                          />
+                        </div>
+                      ) : null}
                     </div>
                     <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
                       <Button type="submit" className="flex-1" disabled={saving}>
@@ -337,20 +373,20 @@ export function ExampleCallPage() {
       <RefreshingHint show={refreshing && rows.length > 0} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Toplam adet" value={summaryTotal} hint={effectivePeriodLabel} tone="blue" />
-        <MetricCard label="Personel" value={summary.length} hint="Kayıtı olan kişi" tone="emerald" />
         <MetricCard
-          label="Günlük"
-          value={periodCounts?.daily.toplam ?? 0}
-          hint="Bugün"
-          tone="amber"
+          label="Örnek çağrı"
+          value={summaryTotals.ornekCagri}
+          hint={effectivePeriodLabel}
+          tone="blue"
         />
         <MetricCard
-          label="Haftalık"
-          value={periodCounts?.weekly.toplam ?? 0}
-          hint="Bu hafta"
-          tone="violet"
+          label="Motivasyon"
+          value={summaryTotals.motivasyon}
+          hint={effectivePeriodLabel}
+          tone="emerald"
         />
+        <MetricCard label="Toplam adet" value={summaryTotal} hint="İki alan toplamı" tone="amber" />
+        <MetricCard label="Personel" value={summary.length} hint="Kayıtı olan kişi" tone="violet" />
       </section>
 
       <section className="panel-card overflow-hidden">
@@ -379,6 +415,12 @@ export function ExampleCallPage() {
                   <p className="kicker">{PERIOD_LABELS[item]}</p>
                   <p className="mt-2 font-display text-3xl font-semibold text-brand-700">
                     {counts?.toplam ?? 0}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Örnek çağrı: <span className="font-semibold">{counts?.ornekCagri ?? 0}</span>
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    Motivasyon: <span className="font-semibold">{counts?.motivasyon ?? 0}</span>
                   </p>
                   <p className="mt-1 text-sm text-slate-500">{counts?.personel ?? 0} personel</p>
                 </div>
@@ -438,7 +480,10 @@ export function ExampleCallPage() {
       </section>
 
       <section className="panel-card overflow-hidden">
-        <SectionHeader title="Personel özeti" description="Seçilen aralıkta kişi başı toplam adet" />
+        <SectionHeader
+          title="Personel özeti"
+          description="Seçilen aralıkta örnek çağrı ve motivasyon adetleri"
+        />
         <div className="p-5">
           {showSkeleton ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -454,7 +499,10 @@ export function ExampleCallPage() {
                 <PersonCard
                   key={row.personelName}
                   name={row.personelName}
-                  stats={[{ label: "Adet", value: row.adet }]}
+                  stats={[
+                    { label: "Örnek çağrı", value: row.ornekCagriAdedi },
+                    { label: "Motivasyon", value: row.motivasyonAdedi },
+                  ]}
                 />
               ))}
             </div>
@@ -489,6 +537,14 @@ export function ExampleCallPage() {
                   className="px-4 py-3"
                 />
                 <SortableTh
+                  label="Alan"
+                  sortKey="recordType"
+                  activeKey={rowSort.sortKey}
+                  dir={rowSort.sortDir}
+                  onSort={(key) => rowSort.toggleSort(key as typeof rowSort.sortKey)}
+                  className="px-4 py-3"
+                />
+                <SortableTh
                   label="Personel"
                   sortKey="personelName"
                   activeKey={rowSort.sortKey}
@@ -510,13 +566,13 @@ export function ExampleCallPage() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                     Kayıt bulunamadı.
                   </td>
                 </tr>
@@ -525,8 +581,13 @@ export function ExampleCallPage() {
                   <tr key={row.id} className="border-t border-slate-100">
                     <td className="whitespace-nowrap px-4 py-3">{formatDateTime(row.createdAt)}</td>
                     <td className="whitespace-nowrap px-4 py-3">{formatDate(row.recordDate)}</td>
+                    <td className="px-4 py-3">
+                      {EXAMPLE_CALL_TYPE_LABELS[row.recordType] ?? "Örnek Çağrı"}
+                    </td>
                     <td className="px-4 py-3 font-medium">{row.personelName}</td>
-                    <td className="px-4 py-3">{row.phone}</td>
+                    <td className="px-4 py-3">
+                      {row.recordType === "MOTIVASYON" ? "—" : row.phone}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <button

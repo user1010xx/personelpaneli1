@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseDate, requireApiUser } from "@/lib/api-helpers";
-import { buildExampleCallSummary, exampleCallDateRange } from "@/lib/example-call";
+import { EXAMPLE_CALL_TYPE_LABELS, exampleCallDateRange } from "@/lib/example-call";
 import { rowsToWorkbook } from "@/lib/excel-export";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
 
@@ -31,16 +31,13 @@ export async function GET(request: Request) {
   });
 
   const buffer = await rowsToWorkbook(
-    [
-      ...buildExampleCallSummary(rows).map((row) => ({
-        personel_adi: row.personelName,
-        adet: row.adet,
-      })),
-      {
-        personel_adi: "Toplam",
-        adet: rows.length,
-      },
-    ],
+    rows.map((row) => ({
+      olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+      tur: EXAMPLE_CALL_TYPE_LABELS[row.recordType],
+      personel_adi: row.personelName,
+      numara: row.recordType === "ORNEK_CAGRI" ? row.phone : "",
+      is_tarihi: row.recordDate.toISOString().slice(0, 10),
+    })),
     "Ornek Cagri",
   );
 

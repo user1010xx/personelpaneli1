@@ -22,6 +22,11 @@ enum SuggestionRequestType {
   ONERI
 }
 
+enum ExampleCallType {
+  ORNEK_CAGRI
+  MOTIVASYON
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -138,17 +143,19 @@ model CallFeedback {
 }
 
 model ExampleCall {
-  id           String   @id @default(cuid())
+  id           String          @id @default(cuid())
   personelName String
-  phone        String
+  recordType   ExampleCallType @default(ORNEK_CAGRI)
+  phone        String          @default("")
   recordDate   DateTime
   createdById  String?
-  createdBy    User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdBy    User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([personelName, recordDate])
   @@index([recordDate])
+  @@index([recordType, recordDate])
 }
 
 model InitiativeWork {

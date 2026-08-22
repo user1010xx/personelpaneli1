@@ -3,13 +3,23 @@ import type { Period } from "@/lib/date-ranges";
 import { getPeriodRange } from "@/lib/date-ranges";
 import { normalizePersonelName } from "@/lib/utils";
 
+export type ExampleCallType = "ORNEK_CAGRI" | "MOTIVASYON";
+
+export const EXAMPLE_CALL_TYPE_LABELS: Record<ExampleCallType, string> = {
+  ORNEK_CAGRI: "Örnek Çağrı",
+  MOTIVASYON: "Motivasyon",
+};
+
 export type ExampleCallSummaryRow = {
   personelName: string;
-  adet: number;
+  ornekCagriAdedi: number;
+  motivasyonAdedi: number;
 };
 
 export type ExampleCallPeriodCounts = {
   toplam: number;
+  ornekCagri: number;
+  motivasyon: number;
   personel: number;
 };
 
@@ -21,23 +31,34 @@ export function exampleCallDateRange(from: Date | null, to: Date | null) {
 }
 
 export function buildExampleCallSummary(
-  rows: { personelName: string }[],
+  rows: { personelName: string; recordType?: ExampleCallType }[],
 ): ExampleCallSummaryRow[] {
   const map = new Map<string, ExampleCallSummaryRow>();
 
   for (const row of rows) {
     const key = normalizePersonelName(row.personelName);
     if (!map.has(key)) {
-      map.set(key, { personelName: row.personelName.trim(), adet: 0 });
+      map.set(key, {
+        personelName: row.personelName.trim(),
+        ornekCagriAdedi: 0,
+        motivasyonAdedi: 0,
+      });
     }
-    map.get(key)!.adet += 1;
+    const entry = map.get(key)!;
+    if (row.recordType === "MOTIVASYON") entry.motivasyonAdedi += 1;
+    else entry.ornekCagriAdedi += 1;
   }
 
   return [...map.values()].sort((a, b) => a.personelName.localeCompare(b.personelName, "tr"));
 }
 
 export function countExampleCallsByPeriod(
-  rows: { personelName: string; recordDate: Date; createdAt: Date }[],
+  rows: {
+    personelName: string;
+    recordType?: ExampleCallType;
+    recordDate: Date;
+    createdAt: Date;
+  }[],
   period: Period,
   anchor = new Date(),
 ): ExampleCallPeriodCounts {
@@ -47,5 +68,16 @@ export function countExampleCallsByPeriod(
     return date >= from && date <= to;
   });
   const personel = new Set(filtered.map((row) => normalizePersonelName(row.personelName)));
-  return { toplam: filtered.length, personel: personel.size };
+  let ornekCagri = 0;
+  let motivasyon = 0;
+  for (const row of filtered) {
+    if (row.recordType === "MOTIVASYON") motivasyon += 1;
+    else ornekCagri += 1;
+  }
+  return {
+    toplam: filtered.length,
+    ornekCagri,
+    motivasyon,
+    personel: personel.size,
+  };
 }

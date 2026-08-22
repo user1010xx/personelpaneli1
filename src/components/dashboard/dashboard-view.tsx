@@ -22,6 +22,7 @@ type Person = {
   geribildirimAdedi: number;
   egitimAdedi: number;
   ornekCagriAdedi: number;
+  motivasyonAdedi: number;
 };
 
 type LeaderEntry = {
@@ -36,6 +37,7 @@ type Leaders = {
   geribildirim: LeaderEntry[];
   egitim: LeaderEntry[];
   ornekCagri: LeaderEntry[];
+  motivasyon: LeaderEntry[];
 };
 
 type SortKey = keyof Person;
@@ -49,6 +51,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "geribildirimAdedi", label: "Geribildirim" },
   { key: "egitimAdedi", label: "Eğitim" },
   { key: "ornekCagriAdedi", label: "Örnek Çağrı" },
+  { key: "motivasyonAdedi", label: "Motivasyon" },
 ];
 
 type DashboardApiResponse = {
@@ -235,7 +238,7 @@ export function DashboardView() {
         </p>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Dinlenen çağrı"
           value={totals.dinlenenCagriAdedi}
@@ -269,8 +272,14 @@ export function DashboardView() {
         <MetricCard
           label="Örnek çağrı"
           value={totals.ornekCagriAdedi}
-          hint="Motivasyon adedi"
+          hint="İletilen adet"
           tone="slate"
+        />
+        <MetricCard
+          label="Motivasyon"
+          value={totals.motivasyonAdedi}
+          hint="İletilen adet"
+          tone="emerald"
         />
       </section>
 
@@ -301,13 +310,13 @@ export function DashboardView() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     Seçilen aralıkta veri yok.
                   </td>
                 </tr>
@@ -321,6 +330,7 @@ export function DashboardView() {
                     <td className="tabular-nums">{person.geribildirimAdedi}</td>
                     <td className="tabular-nums">{person.egitimAdedi}</td>
                     <td className="tabular-nums">{person.ornekCagriAdedi}</td>
+                    <td className="tabular-nums">{person.motivasyonAdedi}</td>
                   </tr>
                 ))
               )}

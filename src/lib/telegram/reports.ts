@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { moduleTitle, roleLabel } from "@/lib/activity-log";
 import { rowsToWorkbook } from "@/lib/excel-export";
 import { formatWorkDuration, initiativeWorkDateRange } from "@/lib/initiative-work";
-import { exampleCallDateRange } from "@/lib/example-call";
+import { EXAMPLE_CALL_TYPE_LABELS, exampleCallDateRange } from "@/lib/example-call";
 import { qualityDateRange } from "@/lib/quality";
 import { TRAINING_RECORD_LABELS, trainingDateRange } from "@/lib/training";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
@@ -153,8 +153,9 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
         olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        tur: EXAMPLE_CALL_TYPE_LABELS[row.recordType],
         personel_adi: row.personelName,
-        numara: row.phone,
+        numara: row.recordType === "ORNEK_CAGRI" ? row.phone : "",
         is_tarihi: row.recordDate.toISOString().slice(0, 10),
       })),
       "Ornek Cagri",

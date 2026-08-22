@@ -5,11 +5,22 @@ import { parseDate, requireApiUser } from "@/lib/api-helpers";
 import { canModifyRecord } from "@/lib/record-auth";
 import { logActivity } from "@/lib/activity-log";
 
-const updateSchema = z.object({
-  personelName: z.string().trim().min(2).optional(),
-  recordDate: z.string().optional(),
-  phone: z.string().trim().min(5).optional(),
-});
+const updateSchema = z
+  .object({
+    recordType: z.enum(["ORNEK_CAGRI", "MOTIVASYON"]).optional(),
+    personelName: z.string().trim().min(2).optional(),
+    recordDate: z.string().optional(),
+    phone: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.recordType === "ORNEK_CAGRI" && data.phone !== undefined && data.phone.length < 5) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone"],
+        message: "Örnek çağrı için numara en az 5 karakter olmalı",
+      });
+    }
+  });
 
 export async function PATCH(
   request: Request,
@@ -21,7 +32,7 @@ export async function PATCH(
   const { id } = await params;
   const existing = await prisma.exampleCall.findUnique({
     where: { id },
-    select: { createdById: true },
+    select: { createdById: true, recordType: true, phone: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Kayıt bulunamadı" }, { status: 404 });
@@ -37,12 +48,27 @@ export async function PATCH(
       return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
     }
 
+    const nextType = body.recordType ?? existing.recordType;
+    const nextPhone =
+      nextType === "MOTIVASYON"
+        ? ""
+        : body.phone !== undefined
+          ? body.phone
+          : existing.phone;
+    if (nextType === "ORNEK_CAGRI" && nextPhone.length < 5) {
+      return NextResponse.json(
+        { error: "Örnek çağrı için numara en az 5 karakter olmalı" },
+        { status: 400 },
+      );
+    }
+
     const row = await prisma.exampleCall.update({
       where: { id },
       data: {
         ...(body.personelName ? { personelName: body.personelName } : {}),
+        ...(body.recordType ? { recordType: body.recordType } : {}),
         ...(recordDate ? { recordDate } : {}),
-        ...(body.phone ? { phone: body.phone } : {}),
+        phone: nextPhone,
       },
     });
 
@@ -52,7 +78,12 @@ export async function PATCH(
       `Örnek çağrı / motivasyon güncelledi: ${row.personelName}.`,
       {
         moduleKey: "EXAMPLE_CALL",
-        metadata: { recordId: row.id, personelName: row.personelName, phone: row.phone },
+        metadata: {
+          recordId: row.id,
+          personelName: row.personelName,
+          recordType: row.recordType,
+          phone: row.phone,
+        },
       },
     );
 

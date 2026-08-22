@@ -6,15 +6,27 @@ import {
   buildExampleCallSummary,
   countExampleCallsByPeriod,
   exampleCallDateRange,
+  type ExampleCallType,
 } from "@/lib/example-call";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
 
-const createSchema = z.object({
-  personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
-  recordDate: z.string().min(1, "Tarih gerekli"),
-  phone: z.string().trim().min(5, "Numara en az 5 karakter olmalı"),
-});
+const createSchema = z
+  .object({
+    recordType: z.enum(["ORNEK_CAGRI", "MOTIVASYON"]),
+    personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
+    recordDate: z.string().min(1, "Tarih gerekli"),
+    phone: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.recordType === "ORNEK_CAGRI" && (!data.phone || data.phone.length < 5)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone"],
+        message: "Örnek çağrı için numara en az 5 karakter olmalı",
+      });
+    }
+  });
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -46,6 +58,7 @@ export async function GET(request: Request) {
 
   const periodSource = rows.map((row) => ({
     personelName: row.personelName,
+    recordType: row.recordType as ExampleCallType,
     recordDate: row.recordDate,
     createdAt: row.createdAt,
   }));
@@ -74,10 +87,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
     }
 
+    const phone = body.recordType === "ORNEK_CAGRI" ? body.phone ?? "" : "";
     const row = await prisma.exampleCall.create({
       data: {
         personelName: body.personelName,
-        phone: body.phone,
+        recordType: body.recordType,
+        phone,
         recordDate,
         createdById: auth.user!.id,
       },
@@ -86,12 +101,13 @@ export async function POST(request: Request) {
     logActivity(
       auth.user!,
       "ORNEK_CAGRI_EKLE",
-      `Örnek çağrı / motivasyon ekledi: ${body.personelName} (${body.phone}).`,
+      `${body.recordType === "MOTIVASYON" ? "Motivasyon" : "Örnek çağrı"} ekledi: ${body.personelName}.`,
       {
         moduleKey: "EXAMPLE_CALL",
         metadata: {
           recordId: row.id,
           personelName: row.personelName,
+          recordType: row.recordType,
           phone: row.phone,
           recordDate: body.recordDate,
         },

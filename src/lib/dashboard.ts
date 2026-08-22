@@ -10,7 +10,7 @@ export type DashboardSourceRows = {
   initiative: { personelName: string }[];
   training: { personelName: string; recordType: "EGITIM" | "GERIBILDIRIM" }[];
   callFeedback: { personelName: string }[];
-  exampleCalls: { personelName: string }[];
+  exampleCalls: { personelName: string; recordType?: "ORNEK_CAGRI" | "MOTIVASYON" }[];
 };
 
 type MetricBucket = {
@@ -19,6 +19,7 @@ type MetricBucket = {
   geribildirim: number;
   egitim: number;
   ornekCagri: number;
+  motivasyon: number;
 };
 
 export type DashboardPerson = {
@@ -29,6 +30,7 @@ export type DashboardPerson = {
   geribildirimAdedi: number;
   egitimAdedi: number;
   ornekCagriAdedi: number;
+  motivasyonAdedi: number;
 };
 
 export type DashboardTotals = {
@@ -38,6 +40,7 @@ export type DashboardTotals = {
   geribildirimAdedi: number;
   egitimAdedi: number;
   ornekCagriAdedi: number;
+  motivasyonAdedi: number;
   personelAdedi: number;
 };
 
@@ -54,6 +57,7 @@ export type DashboardLeaders = {
   geribildirim: LeaderEntry[];
   egitim: LeaderEntry[];
   ornekCagri: LeaderEntry[];
+  motivasyon: LeaderEntry[];
 };
 
 export type DashboardResult = {
@@ -92,7 +96,7 @@ function topUniqueLeaders(
 }
 
 function emptyBucket(): MetricBucket {
-  return { scores: [], insiyatif: 0, geribildirim: 0, egitim: 0, ornekCagri: 0 };
+  return { scores: [], insiyatif: 0, geribildirim: 0, egitim: 0, ornekCagri: 0, motivasyon: 0 };
 }
 
 function avg(values: number[]) {
@@ -109,6 +113,7 @@ function toPerson(personelName: string, data: MetricBucket): DashboardPerson {
     geribildirimAdedi: data.geribildirim,
     egitimAdedi: data.egitim,
     ornekCagriAdedi: data.ornekCagri,
+    motivasyonAdedi: data.motivasyon,
   };
 }
 
@@ -157,7 +162,8 @@ export function buildDashboardResult(
   for (const row of sources.exampleCalls) {
     const key = register(row.personelName);
     if (!key) continue;
-    buckets.get(key)!.ornekCagri += 1;
+    if (row.recordType === "MOTIVASYON") buckets.get(key)!.motivasyon += 1;
+    else buckets.get(key)!.ornekCagri += 1;
   }
 
   const rows: DashboardPerson[] = [];
@@ -182,6 +188,7 @@ export function buildDashboardResult(
     geribildirimAdedi: rows.reduce((sum, row) => sum + row.geribildirimAdedi, 0),
     egitimAdedi: rows.reduce((sum, row) => sum + row.egitimAdedi, 0),
     ornekCagriAdedi: rows.reduce((sum, row) => sum + row.ornekCagriAdedi, 0),
+    motivasyonAdedi: rows.reduce((sum, row) => sum + row.motivasyonAdedi, 0),
     personelAdedi: rows.length,
   };
 
@@ -195,6 +202,7 @@ export function buildDashboardResult(
       geribildirim: topUniqueLeaders(rows, (p) => p.geribildirimAdedi, (v) => `${Math.round(v)} geri bildirim`),
       egitim: topUniqueLeaders(rows, (p) => p.egitimAdedi, (v) => `${Math.round(v)} eğitim`),
       ornekCagri: topUniqueLeaders(rows, (p) => p.ornekCagriAdedi, (v) => `${Math.round(v)} örnek çağrı`),
+      motivasyon: topUniqueLeaders(rows, (p) => p.motivasyonAdedi, (v) => `${Math.round(v)} motivasyon`),
     },
     from: params.from.toISOString(),
     to: params.to.toISOString(),
@@ -240,7 +248,7 @@ export async function getDashboardData(params: {
     }),
     prisma.exampleCall.findMany({
       where: { recordDate: { gte: from, lte: to } },
-      select: { personelName: true },
+      select: { personelName: true, recordType: true },
       take: DASHBOARD_ROW_LIMIT,
       orderBy: [{ recordDate: "desc" }],
     }),
@@ -276,6 +284,7 @@ export function emptyDashboardTotals(): DashboardTotals {
     geribildirimAdedi: 0,
     egitimAdedi: 0,
     ornekCagriAdedi: 0,
+    motivasyonAdedi: 0,
     personelAdedi: 0,
   };
 }

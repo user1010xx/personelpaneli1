@@ -1,39 +1,54 @@
 import { describe, expect, it } from "vitest";
-import {
-  avgByCount,
-  dashboardWeekKey,
-  pickIlkYatMetric,
-  pickWhatsappAverageMetric,
-} from "@/lib/dashboard";
+import { buildDashboardResult, emptyDashboardTotals } from "@/lib/dashboard";
+import { affectedPrefixesForModule } from "@/lib/panel-cache";
 
-describe("dashboard metrics", () => {
-  it("uses explicit WhatsApp average instead of total", () => {
-    expect(
-      pickWhatsappAverageMetric({
-        "Ortalama WhatsApp Cevapsız": "31.3",
-        "Total WhatsApp Cevapsız": "125",
-      }),
-    ).toBe(31.3);
+describe("dashboard helpers", () => {
+  it("starts totals at zero", () => {
+    expect(emptyDashboardTotals()).toEqual({
+      dinlenenCagriAdedi: 0,
+      ortalamaPuan: 0,
+      insiyatifAdedi: 0,
+      geribildirimAdedi: 0,
+      egitimAdedi: 0,
+      personelAdedi: 0,
+    });
   });
 
-  it("averages call totals by loaded period count", () => {
-    expect(avgByCount([100, 200, 300], 3)).toBe(200);
-  });
+  it("counts call feedback as geribildirim and training EGITIM as egitim", () => {
+    const from = new Date(2026, 7, 1);
+    const to = new Date(2026, 7, 31, 23, 59, 59, 999);
+    const result = buildDashboardResult(
+      {
+        quality: [{ personelName: "Ali Yılmaz", score: 80 }],
+        initiative: [{ personelName: "Ali Yılmaz" }],
+        training: [
+          { personelName: "Ali Yılmaz", recordType: "EGITIM" },
+          { personelName: "Ali Yılmaz", recordType: "GERIBILDIRIM" },
+        ],
+        callFeedback: [{ personelName: "Ali Yılmaz" }, { personelName: "ali yilmaz" }],
+      },
+      { from, to },
+    );
 
-  it("reads first deposit count separately from member count", () => {
-    expect(
-      pickIlkYatMetric({
-        "Üye Adedi": "56",
-        "İlk Yat Adedi": "3",
-      }),
-    ).toBe(3);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      dinlenenCagriAdedi: 1,
+      ortalamaPuan: 80,
+      insiyatifAdedi: 1,
+      egitimAdedi: 1,
+      geribildirimAdedi: 3,
+    });
+    expect(result.totals.geribildirimAdedi).toBe(3);
+    expect(result.totals.egitimAdedi).toBe(1);
   });
+});
 
-  it("groups dashboard leader dates by fixed monthly week buckets", () => {
-    expect(dashboardWeekKey(new Date(2026, 5, 1))).toBe("2026-06-01");
-    expect(dashboardWeekKey(new Date(2026, 5, 8))).toBe("2026-06-08");
-    expect(dashboardWeekKey(new Date(2026, 5, 15))).toBe("2026-06-15");
-    expect(dashboardWeekKey(new Date(2026, 5, 22))).toBe("2026-06-22");
-    expect(dashboardWeekKey(new Date(2026, 5, 30))).toBe("2026-06-22");
+describe("panel cache prefixes", () => {
+  it("invalidates dashboard after training and call feedback writes", () => {
+    expect(affectedPrefixesForModule("EGITIM")).toEqual(["/api/training", "/api/dashboard"]);
+    expect(affectedPrefixesForModule("CALL_FEEDBACK")).toEqual([
+      "/api/call-feedback",
+      "/api/dashboard",
+    ]);
   });
 });

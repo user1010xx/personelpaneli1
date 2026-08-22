@@ -12,15 +12,6 @@ enum Role {
   USER
 }
 
-enum ModuleKey {
-  PERSONEL
-  PUANTAJ
-  WHATSAPP
-  UYARI_KESINTI
-  UYE_ADEDI
-  CAGRI_SURECI
-}
-
 enum TrainingRecordType {
   EGITIM
   GERIBILDIRIM
@@ -29,17 +20,6 @@ enum TrainingRecordType {
 enum SuggestionRequestType {
   TALEP
   ONERI
-}
-
-enum AliasScope {
-  PERSONEL
-  PUANTAJ
-  WHATSAPP
-  UYARI_KESINTI
-  UYE_ADEDI
-  CAGRI_SURECI
-  KALITE
-  EGITIM
 }
 
 model User {
@@ -54,9 +34,8 @@ model User {
 
   qualityScores      QualityScore[]
   trainingFeedbacks  TrainingFeedback[]
-  excelUploads       ExcelUpload[]
+  callFeedbacks      CallFeedback[]
   activityLogs       ActivityLog[]
-  personelAliases    PersonelAlias[]
   suggestionRequests SuggestionRequest[]
   initiativeWorks    InitiativeWork[]
 }
@@ -77,26 +56,6 @@ model SuggestionRequest {
   @@index([createdAt])
 }
 
-model PersonelAlias {
-  id            String    @id @default(cuid())
-  aliasName     String
-  aliasKey      String
-  canonicalName String
-  canonicalKey  String
-  moduleKey     ModuleKey?
-  scope         AliasScope?
-  scopeKey      String    @default("GLOBAL")
-  createdById   String?
-  createdBy     User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([aliasKey, scopeKey])
-  @@index([canonicalKey])
-  @@index([moduleKey])
-  @@index([scope])
-}
-
 model ActivityLog {
   id          String   @id @default(cuid())
   userId      String?
@@ -113,75 +72,6 @@ model ActivityLog {
   @@index([createdAt])
   @@index([userId])
   @@index([action])
-}
-
-model SheetConfig {
-  id            String    @id @default(cuid())
-  moduleKey     ModuleKey @unique
-  spreadsheetId String
-  sheetName     String    @default("Sayfa1")
-  range         String?
-  headerRow     Int       @default(1)
-  updatedAt     DateTime  @updatedAt
-}
-
-model SyncBatch {
-  id        String    @id @default(cuid())
-  moduleKey ModuleKey
-  syncedAt  DateTime  @default(now())
-  rowCount  Int
-  rows      SheetDataRow[]
-
-  @@index([moduleKey, syncedAt])
-}
-
-model SheetDataRow {
-  id           String    @id @default(cuid())
-  moduleKey    ModuleKey
-  syncBatchId  String
-  syncBatch    SyncBatch @relation(fields: [syncBatchId], references: [id], onDelete: Cascade)
-  rowData      Json
-  recordDate   DateTime?
-  personelName String?
-  sourceRow    Int?
-  createdAt    DateTime  @default(now())
-
-  @@index([moduleKey, recordDate])
-  @@index([moduleKey, personelName])
-  @@index([moduleKey, createdAt])
-  @@index([moduleKey, sourceRow])
-  @@index([syncBatchId])
-}
-
-model ExcelUpload {
-  id           String    @id @default(cuid())
-  moduleKey    ModuleKey
-  fileName     String
-  uploadedAt   DateTime  @default(now())
-  uploadedById String?
-  uploadedBy   User?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  rowCount     Int
-  periodFrom   DateTime?
-  periodTo     DateTime?
-  rows         ExcelDataRow[]
-
-  @@index([moduleKey, uploadedAt])
-}
-
-model ExcelDataRow {
-  id           String      @id @default(cuid())
-  moduleKey    ModuleKey
-  uploadId     String
-  upload       ExcelUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  rowData      Json
-  recordDate   DateTime?
-  personelName String?
-  createdAt    DateTime    @default(now())
-
-  @@index([moduleKey, recordDate])
-  @@index([moduleKey, personelName])
-  @@index([moduleKey, createdAt])
-  @@index([uploadId])
 }
 
 model RateLimitEntry {
@@ -212,6 +102,25 @@ model TrainingFeedback {
   id           String             @id @default(cuid())
   personelName String
   recordType   TrainingRecordType @default(EGITIM)
+  recordDate   DateTime
+  startTime    String
+  endTime      String
+  topic        String
+  trainer      String
+  createdById  String?
+  createdBy    User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([personelName, recordDate])
+  @@index([recordDate])
+  @@index([recordType, recordDate])
+}
+
+model CallFeedback {
+  id           String             @id @default(cuid())
+  personelName String
+  recordType   TrainingRecordType @default(GERIBILDIRIM)
   recordDate   DateTime
   startTime    String
   endTime      String

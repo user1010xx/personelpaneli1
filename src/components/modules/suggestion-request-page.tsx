@@ -6,6 +6,7 @@ import { Eye, Pencil, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { usePanelFetch } from "@/hooks/use-panel-fetch";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Row = {
   id: string;
@@ -111,12 +112,11 @@ export function SuggestionRequestPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Öneri - Talep</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Tüm kullanıcılar öneri veya talep ekleyebilir; düzenleme ve silme yalnızca ekleyen kişi veya admin tarafından yapılır.
-        </p>
-      </div>
+      <PageHeader
+        kicker="Genel"
+        title="Öneri - Talep"
+        description="Tüm kullanıcılar öneri veya talep ekleyebilir; düzenleme ve silme yalnızca ekleyen kişi veya admin tarafından yapılır."
+      />
 
       {message ? (
         <div
@@ -135,8 +135,8 @@ export function SuggestionRequestPage() {
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
-        <h2 className="mb-4 text-lg font-semibold">
+      <section className="panel-card p-5">
+        <h2 className="mb-4 font-display text-base font-semibold tracking-tight text-ink-900">
           {editingId ? "Kaydı Düzenle" : "Yeni Öneri / Talep"}
         </h2>
         <form onSubmit={submit} className="grid gap-4 lg:grid-cols-2">
@@ -188,10 +188,12 @@ export function SuggestionRequestPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
+        <div className="panel-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Bildirimler</h2>
+              <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+                Bildirimler
+              </h2>
               <p className="text-xs text-slate-500">
                 {refreshing ? "Güncelleniyor..." : `${rows.length} kayıt`}
               </p>
@@ -259,8 +261,8 @@ export function SuggestionRequestPage() {
           </div>
         </div>
 
-        <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
-          <h2 className="text-lg font-semibold text-slate-900">Detay</h2>
+        <aside className="panel-card p-5">
+          <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">Detay</h2>
           {selected ? (
             <div className="mt-4 space-y-4 text-sm">
               <div>

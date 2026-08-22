@@ -25,11 +25,11 @@ export function MonthYearPicker({ month, year, onChange, className, compact }: P
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={cn(
-            "inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-900",
+            "inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[#f7f8f6] px-3 py-1.5 text-sm font-semibold text-ink-900",
             compact && "text-xs",
           )}
         >
-          <Calendar className="h-4 w-4 shrink-0 text-brand-600" />
+          <Calendar className="h-4 w-4 shrink-0 text-brand-700" />
           {label}
         </span>
       </div>

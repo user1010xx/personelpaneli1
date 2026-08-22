@@ -14,6 +14,9 @@ import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
 import { invalidatePrefixes } from "@/lib/panel-cache";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PersonCard } from "@/components/ui/person-card";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 type Row = {
   id: string;
@@ -160,6 +163,14 @@ export function InitiativeWorkPage() {
     () => summary.reduce((total, row) => total + row.calismaAdedi, 0),
     [summary],
   );
+  const initiativeTotals = useMemo(
+    () => ({
+      callCount: rows.reduce((total, row) => total + row.callCount, 0),
+      memberCount: rows.reduce((total, row) => total + row.memberCount, 0),
+      talkSeconds: rows.reduce((total, row) => total + row.talkDurationSeconds, 0),
+    }),
+    [rows],
+  );
 
   function closeForm() {
     setFormOpen(false);
@@ -238,13 +249,11 @@ export function InitiativeWorkPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">İnsiyatif Çalışma</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Kendi insiyatifi ile çalışan personellerin çalışma kayıtları.
-          </p>
-        </div>
+      <PageHeader
+        kicker="Operasyon"
+        title="İnsiyatif Çalışma"
+        description="Kendi insiyatifiyle alınan çağrıların kaydı, özet kartları ve geçmişi."
+        actions={
         <div className="flex flex-wrap items-center gap-2">
           <div ref={formAnchorRef} className="relative">
             <Button
@@ -261,7 +270,7 @@ export function InitiativeWorkPage() {
               <div className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),28rem)] animate-fade-in">
                 <form
                   onSubmit={submit}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel-lg ring-1 ring-slate-100"
+                  className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-panel-lg"
                 >
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -342,7 +351,8 @@ export function InitiativeWorkPage() {
             Excel İndir
           </Button>
         </div>
-      </div>
+        }
+      />
 
       {message ? (
         <div
@@ -359,13 +369,43 @@ export function InitiativeWorkPage() {
 
       <RefreshingHint show={refreshing && rows.length > 0} />
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Filtreleme</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
-          </p>
-        </div>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Çalışma kaydı"
+          value={summaryTotal}
+          hint={effectivePeriodLabel}
+          imageSrc="/visuals/briefcase.jpg"
+          tone="amber"
+        />
+        <MetricCard
+          label="Toplam arama"
+          value={initiativeTotals.callCount}
+          hint="İnsiyatif çağrıları"
+          tone="blue"
+        />
+        <MetricCard
+          label="Toplam üye"
+          value={initiativeTotals.memberCount}
+          hint="Kayıtlı üye adedi"
+          tone="emerald"
+        />
+        <MetricCard
+          label="Konuşma süresi"
+          value={formatWorkDuration(initiativeTotals.talkSeconds)}
+          hint="Toplam süre"
+          tone="violet"
+        />
+      </section>
+
+      <section className="panel-card overflow-hidden">
+        <SectionHeader
+          title="Filtreleme"
+          description={
+            <>
+              Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
+            </>
+          }
+        />
         <div className="grid gap-4 border-b border-slate-100 px-5 py-4 xl:grid-cols-[minmax(220px,320px)_minmax(260px,1fr)_minmax(220px,1fr)_auto_auto] xl:items-end">
           <MonthYearPicker month={month} year={year} onChange={setMonthYearAndClearRange} />
           <div className="grid gap-3 sm:grid-cols-2">
@@ -427,71 +467,58 @@ export function InitiativeWorkPage() {
         </p>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Çalışma Özeti</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Personel bazında çalışma adedi</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-100/90 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-              <tr>
-                <SortableTh
-                  label="Personel İsmi"
-                  sortKey="personelName"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(key) => summarySort.toggleSort(key as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
-                />
-                <SortableTh
-                  label="Çalışma Adet"
-                  sortKey="calismaAdedi"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(key) => summarySort.toggleSort(key as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
-                />
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <tr>
-                  <td colSpan={2} className="px-5 py-8 text-center text-slate-500">
-                    Yükleniyor...
-                  </td>
-                </tr>
-              ) : summary.length === 0 ? (
-                <tr>
-                  <td colSpan={2} className="px-5 py-8 text-center text-slate-500">
-                    Bu tarih aralığında kayıt yok.
-                  </td>
-                </tr>
-              ) : (
-                <>
-                  {sortedSummary.map((row, index) => (
-                    <tr
-                      key={row.personelName}
-                      className={cn("border-t border-slate-100", index % 2 === 1 && "bg-slate-50/60")}
-                    >
-                      <td className="px-5 py-3 font-semibold text-slate-900">{row.personelName}</td>
-                      <td className="px-5 py-3">{row.calismaAdedi}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-slate-200 bg-brand-50/50 font-semibold text-slate-900">
-                    <td className="px-5 py-3">Toplam</td>
-                    <td className="px-5 py-3">{summaryTotal}</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
+      <section className="panel-card overflow-hidden">
+        <SectionHeader
+          title="Çalışma Özeti"
+          description="Personel bazında çalışma adedi"
+        />
+        <div className="p-5">
+          {showSkeleton ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-40 animate-pulse rounded-3xl bg-slate-100" />
+              ))}
+            </div>
+          ) : summary.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">Bu tarih aralığında kayıt yok.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sortedSummary.map((row) => {
+                const personRows = rows.filter((item) => item.personelName === row.personelName);
+                return (
+                  <PersonCard
+                    key={row.personelName}
+                    name={row.personelName}
+                    stats={[
+                      { label: "Çalışma adedi", value: row.calismaAdedi },
+                      {
+                        label: "Arama",
+                        value: personRows.reduce((total, item) => total + item.callCount, 0),
+                      },
+                      {
+                        label: "Üye",
+                        value: personRows.reduce((total, item) => total + item.memberCount, 0),
+                      },
+                      {
+                        label: "Süre",
+                        value: formatWorkDuration(
+                          personRows.reduce((total, item) => total + item.talkDurationSeconds, 0),
+                        ),
+                      },
+                    ]}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
+      <section className="panel-card overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-3">
-          <h2 className="font-semibold text-slate-900">Tüm Kayıtlar</h2>
+          <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+            Geçmiş çalışmalar
+          </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">

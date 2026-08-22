@@ -64,4 +64,4 @@ export function parseDate(value: string | null) {
   return parseDateInput(value);
 }
 
-export { moduleRowDateFilter, toDateRange } from "@/lib/date-parse";
+export { toDateRange } from "@/lib/date-parse";

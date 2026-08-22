@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/health"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/api/health",
+  "/api/telegram/webhook",
+];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
@@ -47,14 +53,15 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    pathname.endsWith(".png")
+    pathname.startsWith("/visuals/") ||
+    /\.(?:png|jpe?g|webp|gif|svg|ico|woff2?)$/i.test(pathname)
   ) {
     return NextResponse.next();
   }
 
   const isPublic = isPublicPath(pathname);
   const unsafeApiMethod = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
-  if (pathname.startsWith("/api/") && unsafeApiMethod) {
+  if (pathname.startsWith("/api/") && unsafeApiMethod && !pathname.startsWith("/api/telegram/webhook")) {
     if (!isTrustedRequestSource(request)) {
       return NextResponse.json({ error: "Geçersiz istek kaynağı" }, { status: 403 });
     }
@@ -100,12 +107,9 @@ export async function middleware(request: NextRequest) {
 
   const adminOnlyPath =
     pathname.startsWith("/kullanicilar") ||
-    pathname.startsWith("/personel-eslestirme") ||
     pathname.startsWith("/log") ||
     pathname.startsWith("/api/users") ||
-    pathname.startsWith("/api/personel-aliases") ||
-    pathname.startsWith("/api/activity-logs") ||
-    pathname.startsWith("/api/sheets/config");
+    pathname.startsWith("/api/activity-logs");
 
   if (adminOnlyPath && isAuthenticated && token && secret) {
     try {

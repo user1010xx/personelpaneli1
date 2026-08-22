@@ -17,7 +17,7 @@ export const createUserSchema = z.object({
     .min(1, "E-posta gerekli")
     .transform(normalizeEmailInput)
     .pipe(z.string().email("Geçerli bir e-posta adresi girin (ör. ad@firma.com)")),
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+  password: z.string().min(8, "Şifre en az 8 karakter olmalı"),
   role: z.enum(["ADMIN", "USER"]).optional(),
 });
 
@@ -29,7 +29,7 @@ export const updateUserSchema = z.object({
     .transform(normalizeEmailInput)
     .pipe(z.string().email("Geçerli bir e-posta adresi girin"))
     .optional(),
-  password: z.string().min(6, "Şifre en az 6 karakter olmalı").optional(),
+  password: z.string().min(8, "Şifre en az 8 karakter olmalı").optional(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   active: z.boolean().optional(),
 });
@@ -58,6 +58,6 @@ export function validateUserFormClient(form: {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email)) {
     return "Geçerli bir e-posta adresi girin (ör. ad@firma.com). .com yerine .cım yazılmış olabilir.";
   }
-  if (form.password.length < 6) return "Şifre en az 6 karakter olmalı";
+  if (form.password.length < 8) return "Şifre en az 8 karakter olmalı";
   return null;
 }

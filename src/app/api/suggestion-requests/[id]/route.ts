@@ -46,7 +46,7 @@ export async function PATCH(
 
   logActivity(auth.user!, "ONERI_TALEP_GUNCELLE", `Öneri/Talep güncelledi: ${row.subject}`, {
     moduleKey: "SUGGESTION_REQUEST",
-    metadata: { id },
+    metadata: { id, subject: row.subject, type: row.type, reporterName: row.reporterName },
   });
 
   return NextResponse.json({ ok: true });
@@ -66,7 +66,7 @@ export async function DELETE(
   await prisma.suggestionRequest.delete({ where: { id } });
   logActivity(auth.user!, "ONERI_TALEP_SIL", `Öneri/Talep sildi: ${permission.row!.subject}`, {
     moduleKey: "SUGGESTION_REQUEST",
-    metadata: { id },
+    metadata: { id, subject: permission.row!.subject },
   });
 
   return NextResponse.json({ ok: true });

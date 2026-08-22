@@ -3,11 +3,6 @@ import type { TrainingRecordType } from "@prisma/client";
 import type { Period } from "@/lib/date-ranges";
 import { getPeriodRange } from "@/lib/date-ranges";
 import { normalizePersonelName } from "@/lib/utils";
-import {
-  type PersonelAliasMap,
-  resolvePersonelBucketKey,
-  resolvePersonelDisplayName,
-} from "@/lib/personel-alias";
 
 export type TrainingPeriodCounts = {
   egitim: number;
@@ -24,17 +19,12 @@ export type TrainingSummaryRow = {
 
 export function buildTrainingSummary(
   rows: { personelName: string; recordType: TrainingRecordType }[],
-  aliases?: PersonelAliasMap,
 ): TrainingSummaryRow[] {
   const map = new Map<string, TrainingSummaryRow>();
 
   for (const row of rows) {
-    const key = aliases
-      ? resolvePersonelBucketKey(row.personelName, aliases)
-      : normalizePersonelName(row.personelName);
-    const display = aliases
-      ? resolvePersonelDisplayName(row.personelName, aliases)
-      : row.personelName.trim();
+    const key = normalizePersonelName(row.personelName);
+    const display = row.personelName.trim();
     if (!map.has(key)) {
       map.set(key, { personelName: display, egitimAdedi: 0, geribildirimAdedi: 0 });
     }
@@ -72,7 +62,6 @@ export function countTrainingByPeriod(
   }[],
   period: Period,
   anchor = new Date(),
-  aliases?: PersonelAliasMap,
 ): TrainingPeriodCounts {
   const { from, to } = getPeriodRange(period, anchor);
   const filtered = rows.filter((row) => {
@@ -85,11 +74,7 @@ export function countTrainingByPeriod(
   let geribildirim = 0;
 
   for (const row of filtered) {
-    personel.add(
-      aliases
-        ? resolvePersonelBucketKey(row.personelName, aliases)
-        : normalizePersonelName(row.personelName),
-    );
+    personel.add(normalizePersonelName(row.personelName));
     if (row.recordType === "GERIBILDIRIM") geribildirim += 1;
     else egitim += 1;
   }

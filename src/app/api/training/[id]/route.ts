@@ -9,7 +9,6 @@ import { timeStringSchema } from "@/lib/validation";
 const updateSchema = z
   .object({
     personelName: z.string().trim().min(2).optional(),
-    recordType: z.enum(["EGITIM", "GERIBILDIRIM"]).optional(),
     recordDate: z.string().optional(),
     startTime: timeStringSchema.optional(),
     endTime: timeStringSchema.optional(),
@@ -74,7 +73,6 @@ export async function PATCH(
       where: { id },
       data: {
         ...(body.personelName ? { personelName: body.personelName } : {}),
-        ...(body.recordType ? { recordType: body.recordType } : {}),
         ...(recordDate ? { recordDate } : {}),
         ...(body.startTime ? { startTime: body.startTime } : {}),
         ...(body.endTime ? { endTime: body.endTime } : {}),
@@ -86,7 +84,10 @@ export async function PATCH(
       auth.user!,
       "EGITIM_GUNCELLE",
       `Eğitim kaydını güncelledi: ${row.personelName} — ${row.topic}.`,
-      { moduleKey: "EGITIM", metadata: { recordId: row.id } },
+      {
+        moduleKey: "EGITIM",
+        metadata: { recordId: row.id, personelName: row.personelName, topic: row.topic, trainer: row.trainer },
+      },
     );
     return NextResponse.json({ row });
   } catch (error) {
@@ -99,31 +100,9 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const auth = await requireApiUser();
-  if (auth.error) return auth.error;
-  const { id } = await params;
-
-  const existing = await prisma.trainingFeedback.findUnique({
-    where: { id },
-    select: { createdById: true, personelName: true, topic: true },
-  });
-  if (!existing) {
-    return NextResponse.json({ error: "Kayıt bulunamadı" }, { status: 404 });
-  }
-  if (!canModifyRecord(auth.user!, existing.createdById)) {
-    return NextResponse.json({ error: "Bu kaydı silme yetkiniz yok" }, { status: 403 });
-  }
-
-  await prisma.trainingFeedback.delete({ where: { id } });
-  logActivity(
-    auth.user!,
-    "EGITIM_SIL",
-    `Eğitim kaydını sildi: ${existing.personelName} — ${existing.topic}.`,
-    { moduleKey: "EGITIM", metadata: { recordId: id } },
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Eğitim ve geribildirim kayıtları silinemez. Geçmiş korunur." },
+    { status: 405 },
   );
-  return NextResponse.json({ ok: true });
 }

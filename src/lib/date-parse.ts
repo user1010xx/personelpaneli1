@@ -19,32 +19,3 @@ export function toDateRange(from: Date | null, to: Date | null) {
     to: to ? endOfDay(to) : null,
   };
 }
-
-/** Ay/yıl aralığıyla filtrelenmeyen modüller (liste tamamını gösterir) */
-export function moduleUsesDateRangeFilter(moduleKey: string) {
-  return moduleKey !== "PERSONEL" && moduleKey !== "UYARI_KESINTI";
-}
-
-/** Sheet/Excel satır tarih filtresi (recordDate veya createdAt fallback) */
-export function moduleRowDateFilter(from: Date | null, to: Date | null) {
-  const range = toDateRange(from, to);
-  if (!range.from && !range.to) return null;
-
-  return {
-    OR: [
-      {
-        recordDate: {
-          ...(range.from ? { gte: range.from } : {}),
-          ...(range.to ? { lte: range.to } : {}),
-        },
-      },
-      {
-        recordDate: null,
-        createdAt: {
-          ...(range.from ? { gte: range.from } : {}),
-          ...(range.to ? { lte: range.to } : {}),
-        },
-      },
-    ],
-  };
-}

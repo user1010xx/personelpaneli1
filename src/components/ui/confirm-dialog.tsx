@@ -31,7 +31,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-950/45 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -39,7 +39,7 @@ export function ConfirmDialog({
         if (e.target === e.currentTarget && !loading) onClose();
       }}
     >
-      <div className="w-full max-w-md animate-fade-in rounded-2xl border border-slate-200 bg-white p-6 shadow-panel-lg">
+      <div className="w-full max-w-md animate-fade-in rounded-xl border border-[var(--border)] bg-white p-6 shadow-panel-lg">
         <div className="flex items-start justify-between gap-3">
           <div
             className={cn(

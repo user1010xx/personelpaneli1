@@ -12,7 +12,7 @@ describe("createUserSchema", () => {
     const parsed = createUserSchema.parse({
       name: "Test Kullanıcı",
       email: "test@gmail.cım",
-      password: "123456",
+      password: "12345678",
       role: "USER",
     });
     expect(parsed.email).toBe("test@gmail.com");

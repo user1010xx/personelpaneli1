@@ -26,9 +26,3 @@ export function normalizePersonelName(value: string) {
 export function displayPersonelName(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
-
-/** Sheet satırlarında personelName alanı için tutarlı gösterim */
-export function sheetPersonelName(value: string | null | undefined): string | null {
-  if (!value?.trim()) return null;
-  return displayPersonelName(value);
-}

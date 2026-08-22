@@ -2,25 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { useMonthYearRange } from "@/hooks/use-month-year-range";
 import { currentMonthYear } from "@/lib/month-year";
-import { formatDuration } from "@/lib/dashboard";
-import { cn } from "@/lib/utils";
+import { emptyDashboardTotals } from "@/lib/dashboard";
 import { TableSortIcon } from "@/components/ui/sortable-th";
 import { usePanelFetch } from "@/hooks/use-panel-fetch";
 import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { PageHeader } from "@/components/ui/page-header";
+import { MetricCard } from "@/components/ui/metric-card";
 
 type Person = {
   personelName: string;
-  uyeAdedi: number;
-  ilkYatAdedi: number;
-  ortalamaAramaAdedi: number;
-  ortalamaKonusmaSuresi: number;
-  ortalamaCagriPuani: number;
-  ortalamaWhatsappCevapsiz: number;
+  dinlenenCagriAdedi: number;
+  ortalamaPuan: number;
+  insiyatifAdedi: number;
+  geribildirimAdedi: number;
+  egitimAdedi: number;
 };
 
 type LeaderEntry = {
@@ -29,60 +29,28 @@ type LeaderEntry = {
 };
 
 type Leaders = {
-  uyelik: LeaderEntry[];
-  cagriPuani: LeaderEntry[];
-  konusmaSuresi: LeaderEntry[];
-  aramaAdedi: LeaderEntry[];
-  whatsappCevapsiz: LeaderEntry[];
+  dinlenen: LeaderEntry[];
+  ortalamaPuan: LeaderEntry[];
+  insiyatif: LeaderEntry[];
+  geribildirim: LeaderEntry[];
+  egitim: LeaderEntry[];
 };
 
 type SortKey = keyof Person;
 type SortDir = "asc" | "desc";
 
-const LEADER_CARDS = [
-  {
-    key: "uyelik" as const,
-    title: "Haftanın Üyelik Lideri",
-    className: "from-emerald-500 to-emerald-600",
-  },
-  {
-    key: "cagriPuani" as const,
-    title: "Haftanın Çağrı Puanı Lideri",
-    className: "from-sky-500 to-blue-600",
-  },
-  {
-    key: "konusmaSuresi" as const,
-    title: "Haftanın Konuşma Süresi Lideri",
-    className: "from-violet-500 to-purple-600",
-  },
-  {
-    key: "aramaAdedi" as const,
-    title: "Haftanın Arama Adedi Lideri",
-    className: "from-orange-500 to-amber-600",
-  },
-  {
-    key: "whatsappCevapsiz" as const,
-    title: "Haftanın WhatsApp Cevapsız Lideri",
-    className: "from-rose-500 to-red-600",
-  },
-];
-
-const COLUMNS: { key: SortKey; label: string; format?: (v: number) => string }[] = [
-  { key: "personelName", label: "Personel Adı" },
-  { key: "uyeAdedi", label: "Üye Adedi" },
-  { key: "ilkYatAdedi", label: "İlk Yat Adedi" },
-  { key: "ortalamaAramaAdedi", label: "Ortalama Arama Adedi" },
-  {
-    key: "ortalamaKonusmaSuresi",
-    label: "Ortalama Konuşma Süresi",
-    format: (v) => formatDuration(v),
-  },
-  { key: "ortalamaCagriPuani", label: "Ortalama Çağrı Puanı" },
-  { key: "ortalamaWhatsappCevapsiz", label: "Ortalama WhatsApp Cevapsız Adedi" },
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "personelName", label: "Personel" },
+  { key: "dinlenenCagriAdedi", label: "Dinlenen Çağrı" },
+  { key: "ortalamaPuan", label: "Ortalama Puan" },
+  { key: "insiyatifAdedi", label: "İnsiyatif" },
+  { key: "geribildirimAdedi", label: "Geribildirim" },
+  { key: "egitimAdedi", label: "Eğitim" },
 ];
 
 type DashboardApiResponse = {
   rows: Person[];
+  totals?: ReturnType<typeof emptyDashboardTotals>;
   leaders: Leaders;
   from?: string;
   to?: string;
@@ -125,14 +93,14 @@ export function DashboardView() {
     return p;
   }, [effectiveFrom, effectiveTo, filters.search]);
 
-  const { data, showSkeleton, refreshing } = usePanelFetch<DashboardApiResponse>(
+  const { data, showSkeleton, refreshing, error } = usePanelFetch<DashboardApiResponse>(
     "/api/dashboard",
     params,
     { debounceMs: 0 },
   );
 
   const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
-  const leaders = data?.leaders ?? null;
+  const totals = data?.totals ?? emptyDashboardTotals();
   const { search, sortKey, sortDir } = filters;
 
   useEffect(() => {
@@ -167,23 +135,25 @@ export function DashboardView() {
   }
 
   function exportExcel() {
-    const params = new URLSearchParams({ from: effectiveFrom, to: effectiveTo });
-    if (search) params.set("search", search);
-    window.open(`/api/dashboard/export?${params}`, "_blank");
+    const next = new URLSearchParams({ from: effectiveFrom, to: effectiveTo });
+    if (search) next.set("search", search);
+    window.open(`/api/dashboard/export?${next}`, "_blank");
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
+        kicker="Genel"
         title="Dashboard"
-        description="Personel performansı, liderlik kartları ve birleşik operasyon metrikleri."
+        description="Personel bazında dinlenen çağrı, puan, insiyatif, eğitim ve geribildirim özeti."
       />
 
       <section className="panel-card p-5 sm:p-6">
-        <h2 className="mb-1 font-display text-lg font-bold text-slate-900">Dönem seçimi</h2>
+        <h2 className="mb-1 font-display text-base font-semibold tracking-tight text-ink-900">
+          Dönem seçimi
+        </h2>
         <p className="mb-5 text-xs text-slate-500">
-          Dashboard metrikleri seçilen ay/yıl veya günlük aralığa göre hesaplanır — şu an:{" "}
-          <span className="font-semibold text-brand-700">{effectivePeriodLabel}</span>
+          Şu an: <span className="font-semibold text-brand-800">{effectivePeriodLabel}</span>
         </p>
         <div className="grid gap-4 xl:grid-cols-[minmax(220px,280px)_minmax(260px,360px)_1fr_auto] xl:items-end">
           <MonthYearPicker
@@ -223,43 +193,35 @@ export function DashboardView() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applySearch()}
-                placeholder="Personel veya değer ara"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                placeholder="Personel ara"
+                className="panel-input pl-10"
               />
             </div>
           </label>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={applySearch}
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-brand-500 to-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:from-brand-600 hover:to-brand-700"
-            >
+            <Button type="button" onClick={applySearch}>
               Uygula
-            </button>
+            </Button>
             {hasCustomRange ? (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => patchFilters({ customFrom: "", customTo: "" })}
-                className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
               >
                 Aylık göster
-              </button>
+              </Button>
             ) : null}
-            <button
-              type="button"
-              onClick={exportExcel}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-            >
+            <Button type="button" variant="secondary" onClick={exportExcel}>
               <Download className="h-4 w-4" />
               Export
-            </button>
+            </Button>
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-500">
-          {effectivePeriodLabel} · Üye Adedi, Çağrı Süreci, Kalite ve
-          WhatsApp modüllerinden birleştirilmiş veri
-        </p>
       </section>
+
+      {error ? (
+        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">{error}</p>
+      ) : null}
 
       <RefreshingHint show={refreshing && rows.length > 0} />
 
@@ -270,21 +232,44 @@ export function DashboardView() {
         </p>
       ) : null}
 
-      <section className="grid gap-4 xl:grid-cols-5">
-        {LEADER_CARDS.map((card) => (
-          <LeaderCard
-            key={card.key}
-            title={card.title}
-            className={card.className}
-            entries={leaders?.[card.key] ?? []}
-            showSkeleton={showSkeleton}
-          />
-        ))}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          label="Dinlenen çağrı"
+          value={totals.dinlenenCagriAdedi}
+          hint={`${totals.personelAdedi} personel`}
+          tone="blue"
+        />
+        <MetricCard
+          label="Ortalama puan"
+          value={totals.ortalamaPuan.toFixed(1)}
+          hint="Tüm dinlemeler"
+          tone="violet"
+        />
+        <MetricCard
+          label="İnsiyatif çalışma"
+          value={totals.insiyatifAdedi}
+          hint="Kayıt adedi"
+          tone="amber"
+        />
+        <MetricCard
+          label="Geribildirim"
+          value={totals.geribildirimAdedi}
+          hint="İletilen adet"
+          tone="rose"
+        />
+        <MetricCard
+          label="Eğitim"
+          value={totals.egitimAdedi}
+          hint="Alınan eğitim"
+          tone="emerald"
+        />
       </section>
 
       <section className="data-table-wrap">
         <div className="panel-card-header">
-          <h2 className="font-display text-lg font-bold text-slate-900">Personel Performans Tablosu</h2>
+          <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+            Personel tablosu
+          </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
@@ -298,7 +283,7 @@ export function DashboardView() {
                       className="inline-flex items-center gap-1 hover:text-slate-900"
                     >
                       {col.label}
-                      <SortIcon active={sortKey === col.key} dir={sortDir} />
+                      <TableSortIcon active={sortKey === col.key} dir={sortDir} />
                     </button>
                   </th>
                 ))}
@@ -307,26 +292,25 @@ export function DashboardView() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                    Seçilen aralıkta veri yok. Modüllere veri ekleyip tekrar deneyin.
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                    Seçilen aralıkta veri yok.
                   </td>
                 </tr>
               ) : (
                 sortedRows.map((person) => (
                   <tr key={person.personelName}>
                     <td className="!font-semibold !text-slate-900">{person.personelName}</td>
-                    <td className="tabular-nums">{person.uyeAdedi}</td>
-                    <td className="tabular-nums">{person.ilkYatAdedi}</td>
-                    <td className="tabular-nums">{person.ortalamaAramaAdedi}</td>
-                    <td className="tabular-nums">{formatDuration(person.ortalamaKonusmaSuresi)}</td>
-                    <td className="tabular-nums">{person.ortalamaCagriPuani}</td>
-                    <td className="tabular-nums">{person.ortalamaWhatsappCevapsiz}</td>
+                    <td className="tabular-nums">{person.dinlenenCagriAdedi}</td>
+                    <td className="tabular-nums">{person.ortalamaPuan.toFixed(1)}</td>
+                    <td className="tabular-nums">{person.insiyatifAdedi}</td>
+                    <td className="tabular-nums">{person.geribildirimAdedi}</td>
+                    <td className="tabular-nums">{person.egitimAdedi}</td>
                   </tr>
                 ))
               )}
@@ -336,53 +320,4 @@ export function DashboardView() {
       </section>
     </div>
   );
-}
-
-function LeaderCard({
-  title,
-  className,
-  entries,
-  showSkeleton,
-}: {
-  title: string;
-  className: string;
-  entries: LeaderEntry[];
-  showSkeleton: boolean;
-}) {
-  const padded = [...entries];
-  while (padded.length < 3) {
-    padded.push({ personelName: "—", display: "—" });
-  }
-
-  return (
-    <div
-      className={cn(
-        "flex min-h-[280px] flex-col rounded-2xl bg-gradient-to-br p-5 text-white shadow-panel-lg ring-1 ring-white/10",
-        className,
-      )}
-    >
-      <h3 className="mb-4 text-center text-xs font-extrabold uppercase leading-snug tracking-wide">
-        {title}
-      </h3>
-      <div className="flex flex-1 flex-col gap-2">
-        {showSkeleton
-          ? Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-xl bg-white/20" />
-            ))
-          : padded.slice(0, 3).map((entry, i) => (
-              <div
-                key={`${entry.personelName}-${i}`}
-                className="rounded-xl bg-black/15 px-3 py-2.5 backdrop-blur-sm"
-              >
-                <p className="truncate text-sm font-bold">{entry.personelName}</p>
-                <p className="text-xs font-medium text-white/90">{entry.display}</p>
-              </div>
-            ))}
-      </div>
-    </div>
-  );
-}
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  return <TableSortIcon active={active} dir={dir} />;
 }

@@ -4,16 +4,15 @@
 
 :root {
   color-scheme: light;
-  --surface: #f4f6fa;
+  --surface: #f3f4f1;
   --surface-elevated: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --accent: #2563eb;
-  --accent-soft: #eff6ff;
-  --sidebar: #0f172a;
-  --sidebar-hover: #1e293b;
-  --radius: 0.75rem;
+  --border: rgba(16, 20, 18, 0.08);
+  --text: #101412;
+  --text-muted: #5d675f;
+  --accent: #0e8a70;
+  --accent-soft: #edfaf6;
+  --sidebar: #0b0f0e;
+  --radius: 0.9rem;
 }
 
 @layer base {
@@ -23,35 +22,82 @@
 
   body {
     @apply bg-[var(--surface)] font-sans text-[var(--text)] antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: "ss01", "cv11";
   }
 
   h1,
   h2,
   h3 {
-    @apply tracking-tight text-slate-900;
+    @apply font-display tracking-tight;
+    color: #101412;
   }
 }
 
 @layer components {
   .panel-shell-bg {
-    background-color: var(--surface);
+    background-color: #f3f4f1;
     background-image:
-      radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.04) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.03) 0px, transparent 45%),
-      linear-gradient(to bottom, transparent, rgba(248, 250, 252, 0.8));
+      linear-gradient(to right, rgba(16, 20, 18, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(16, 20, 18, 0.035) 1px, transparent 1px);
+    background-size: 28px 28px;
   }
 
+  .login-stage {
+    background-color: #080b0a;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(23, 168, 136, 0.18), transparent 32%),
+      radial-gradient(circle at 88% 88%, rgba(23, 168, 136, 0.1), transparent 28%),
+      linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: auto, auto, 48px 48px, 48px 48px;
+  }
+
+  .login-input {
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3.5 text-[15px] text-white outline-none transition placeholder:text-white/30 hover:border-white/20 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/15;
+  }
+
+  .login-card-3d {
+    transform-style: preserve-3d;
+    border-radius: 1.55rem;
+    background:
+      linear-gradient(165deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 42%, rgba(8, 14, 12, 0.72) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -18px 40px rgba(0, 0, 0, 0.28),
+      0 2px 0 rgba(255, 255, 255, 0.06),
+      0 18px 40px rgba(0, 0, 0, 0.45),
+      0 40px 80px -24px rgba(0, 0, 0, 0.7),
+      0 0 90px -28px rgba(23, 168, 136, 0.45);
+  }
+
+  .login-card-3d::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    transform: translateZ(1px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 34%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .login-card-3d {
+      transform: none !important;
+    }
+  }
+
+  .glass-card,
   .panel-card {
-    @apply rounded-2xl border border-slate-200/70 bg-white shadow-panel;
+    @apply rounded-[1.05rem] border border-[var(--border)] bg-white shadow-panel;
   }
 
   .panel-card-header {
-    @apply border-b border-slate-100 px-5 py-4 sm:px-6;
+    @apply border-b border-[var(--border)] px-5 py-4 sm:px-6;
   }
 
   .panel-input {
-    @apply w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10;
+    @apply w-full rounded-xl border border-[var(--border)] bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15;
   }
 
   .filter-toolbar {
@@ -63,7 +109,7 @@
   }
 
   .filter-label {
-    @apply text-[11px] font-bold uppercase tracking-wider text-slate-400;
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400;
   }
 
   .data-table-wrap {
@@ -75,19 +121,19 @@
   }
 
   .data-table thead {
-    @apply border-b border-slate-200/80 bg-slate-50/90;
+    @apply border-b border-[var(--border)] bg-[#f7f8f6];
   }
 
   .data-table thead th {
-    @apply px-5 py-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-500;
+    @apply px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500;
   }
 
   .data-table tbody tr {
-    @apply border-b border-slate-100/90 transition-colors last:border-0;
+    @apply border-b border-[var(--border)] transition-colors last:border-0;
   }
 
   .data-table tbody tr:hover {
-    @apply bg-brand-50/40;
+    @apply bg-brand-50/60;
   }
 
   .data-table tbody td {
@@ -99,32 +145,32 @@
   }
 
   .stat-card-active {
-    @apply ring-2 ring-brand-500/25 shadow-panel-lg;
+    @apply ring-1 ring-brand-500/25;
   }
 
-  .stat-card::before {
-    content: "";
-    @apply pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-500 to-indigo-500 opacity-0 transition-opacity;
+  .stat-3d {
+    transition: transform 180ms ease, box-shadow 180ms ease;
   }
 
-  .stat-card-active::before {
-    @apply opacity-100;
+  .stat-3d:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px -24px rgba(16, 20, 18, 0.4);
   }
 
   .segmented-control {
-    @apply inline-flex rounded-xl bg-slate-100/90 p-1 ring-1 ring-slate-200/80;
+    @apply inline-flex rounded-xl bg-[#eceee9] p-1;
   }
 
   .segmented-item {
-    @apply rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition-all;
+    @apply rounded-lg px-3.5 py-1.5 text-sm font-semibold text-slate-600 transition-all;
   }
 
   .segmented-item-active {
-    @apply bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80;
+    @apply bg-white text-ink-900 shadow-sm;
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
   }
 
   .badge-brand {
@@ -148,13 +194,17 @@
   }
 
   .empty-state-icon {
-    @apply mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400;
+    @apply mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#eceee9] text-slate-400;
+  }
+
+  .kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400;
   }
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #c5cbc4 transparent;
 }
 
 *::-webkit-scrollbar {
@@ -163,5 +213,5 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-slate-300/80;
+  @apply rounded-full bg-slate-300/90;
 }

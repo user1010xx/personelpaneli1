@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Download, Pencil, Plus, Trash2, X } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Download, Pencil, Plus, X } from "lucide-react";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { useMonthYearRange } from "@/hooks/use-month-year-range";
 import { currentMonthYear } from "@/lib/month-year";
@@ -19,6 +19,9 @@ import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
 import { invalidateModuleDataCaches } from "@/lib/panel-cache";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PersonCard } from "@/components/ui/person-card";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 type Row = {
   id: string;
@@ -46,6 +49,7 @@ type TrainingApiResponse = {
     weekly: TrainingPeriodCounts;
     monthly: TrainingPeriodCounts;
   };
+  truncated?: boolean;
 };
 
 function formatKayitTarihi(iso: string) {
@@ -60,9 +64,9 @@ function formatKayitTarihi(iso: string) {
   });
 }
 
-const emptyForm = () => ({
+const emptyForm = (recordType: TrainingRecordType = "EGITIM") => ({
   personelName: "",
-  recordType: "EGITIM" as TrainingRecordType,
+  recordType,
   recordDate: new Date().toISOString().slice(0, 10),
   startTime: "09:00",
   endTime: "10:00",
@@ -70,9 +74,37 @@ const emptyForm = () => ({
   trainer: "",
 });
 
-export function ManualTrainingPage() {
+type FeedbackPageConfig = {
+  title?: string;
+  description?: string;
+  persistKey?: string;
+  apiPath?: string;
+  cacheModule?: string;
+  imageSrc?: string;
+  trainerLabel?: string;
+  primaryTypeLabel?: string;
+  kicker?: string;
+  lockRecordType?: TrainingRecordType;
+  hideRecordType?: boolean;
+  periodStatsMode?: "split" | "simple";
+};
+
+export function ManualTrainingPage({
+  title = "Eğitim Geribildirim",
+  description = "Eğitim ve geribildirim kayıtları silinmez. Tüm geçmiş bu ekranda kalır.",
+  persistKey = "egitim",
+  apiPath = "/api/training",
+  cacheModule = "EGITIM",
+  imageSrc = "/visuals/graduation.jpg",
+  trainerLabel = "Eğitimi Veren",
+  primaryTypeLabel = "Eğitim",
+  kicker = "Operasyon",
+  lockRecordType,
+  hideRecordType = false,
+  periodStatsMode = "split",
+}: FeedbackPageConfig) {
   const defaultPeriod = currentMonthYear();
-  const [filters, setFilters] = usePersistedPageState("egitim", {
+  const [filters, setFilters] = usePersistedPageState(persistKey, {
     search: "",
     month: defaultPeriod.month,
     year: defaultPeriod.year,
@@ -109,12 +141,13 @@ export function ManualTrainingPage() {
       period: filters.period,
       from: effectiveFrom,
       to: effectiveTo,
+      pageSize: "5000",
     });
     return p;
   }, [effectiveFrom, effectiveTo, filters]);
 
   const { data, showSkeleton, refreshing, error } = usePanelFetch<TrainingApiResponse>(
-    "/api/training",
+    apiPath,
     params,
     { debounceMs: 0 },
   );
@@ -133,12 +166,19 @@ export function ManualTrainingPage() {
     [summary, summarySort],
   );
 
-  const [form, setForm] = useState(emptyForm);
+  const defaultRecordType = lockRecordType ?? "EGITIM";
+  const [form, setForm] = useState(() => emptyForm(defaultRecordType));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const formAnchorRef = useRef<HTMLDivElement>(null);
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm(defaultRecordType));
+  }, [defaultRecordType]);
 
   useEffect(() => {
     if (error) setMessage(error);
@@ -160,7 +200,7 @@ export function ManualTrainingPage() {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClick);
     };
-  }, [formOpen]);
+  }, [formOpen, closeForm]);
 
   const summaryTotals = useMemo(
     () => ({
@@ -170,15 +210,9 @@ export function ManualTrainingPage() {
     [summary],
   );
 
-  function closeForm() {
-    setFormOpen(false);
-    setEditingId(null);
-    setForm(emptyForm());
-  }
-
   function openNewForm() {
     setEditingId(null);
-    setForm(emptyForm());
+    setForm(emptyForm(defaultRecordType));
     setFormOpen(true);
   }
 
@@ -200,11 +234,14 @@ export function ManualTrainingPage() {
     e.preventDefault();
     setMessage(null);
     setSaving(true);
-    const res = await fetch(editingId ? `/api/training/${editingId}` : "/api/training", {
+    const res = await fetch(editingId ? `${apiPath}/${editingId}` : apiPath, {
       method: editingId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        recordType: lockRecordType ?? form.recordType,
+      }),
     });
     const json = await res.json().catch(() => ({}));
     setSaving(false);
@@ -212,7 +249,7 @@ export function ManualTrainingPage() {
       const wasEdit = Boolean(editingId);
       closeForm();
       setMessage(wasEdit ? "Kayıt güncellendi" : "Kayıt kaydedildi");
-      invalidateModuleDataCaches("EGITIM");
+      invalidateModuleDataCaches(cacheModule);
     } else {
       setMessage(json.error ?? "Kayıt kaydedilemedi");
     }
@@ -223,18 +260,16 @@ export function ManualTrainingPage() {
     if (effectiveFrom) params.set("from", effectiveFrom);
     if (effectiveTo) params.set("to", effectiveTo);
     if (search) params.set("search", search);
-    window.open(`/api/training/export?${params}`, "_blank");
+    window.open(`${apiPath}/export?${params}`, "_blank");
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Eğitim Geribildirim</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Personel bazında eğitim ve geribildirim özeti — veriler kalıcı olarak saklanır.
-          </p>
-        </div>
+      <PageHeader
+        kicker={kicker}
+        title={title}
+        description={description}
+        actions={
         <div className="flex flex-wrap items-center gap-2">
           <div ref={formAnchorRef} className="relative">
             <Button
@@ -253,7 +288,7 @@ export function ManualTrainingPage() {
               <div className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),28rem)] animate-fade-in">
                 <form
                   onSubmit={onSubmit}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel-lg ring-1 ring-slate-100"
+                  className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-panel-lg"
                 >
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -273,19 +308,21 @@ export function ManualTrainingPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <Field label="Kayıt Türü">
-                      <select
-                        value={form.recordType}
-                        onChange={(e) =>
-                          setForm({ ...form, recordType: e.target.value as TrainingRecordType })
-                        }
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                        required
-                      >
-                        <option value="EGITIM">Eğitim</option>
-                        <option value="GERIBILDIRIM">Geribildirim</option>
-                      </select>
-                    </Field>
+                    {lockRecordType ? null : (
+                      <Field label="Kayıt Türü">
+                        <select
+                          value={form.recordType}
+                          onChange={(e) =>
+                            setForm({ ...form, recordType: e.target.value as TrainingRecordType })
+                          }
+                          className="panel-input"
+                          required
+                        >
+                          <option value="EGITIM">{primaryTypeLabel}</option>
+                          <option value="GERIBILDIRIM">Geribildirim</option>
+                        </select>
+                      </Field>
+                    )}
                     <Field label="Personel Adı">
                       <Input
                         value={form.personelName}
@@ -327,7 +364,7 @@ export function ManualTrainingPage() {
                         required
                       />
                     </Field>
-                    <Field label="Eğitimi Veren">
+                    <Field label={trainerLabel}>
                       <Input
                         value={form.trainer}
                         onChange={(e) => setForm({ ...form, trainer: e.target.value })}
@@ -354,7 +391,8 @@ export function ManualTrainingPage() {
             Excel İndir
           </Button>
         </div>
-      </div>
+        }
+      />
 
       {message ? (
         <div
@@ -371,27 +409,74 @@ export function ManualTrainingPage() {
 
       <RefreshingHint show={refreshing && rows.length > 0} />
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Dönem Özeti</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Günlük, haftalık ve aylık eğitim / geribildirim adetleri</p>
-        </div>
+      {data?.truncated ? (
+        <p className="text-xs font-medium text-amber-700">
+          Özet kayıt üst sınırı nedeniyle eksik hesaplanmış olabilir. Tarih aralığını daraltmayı
+          deneyin.
+        </p>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {hideRecordType ? (
+          <MetricCard
+            label={primaryTypeLabel}
+            value={summaryTotals.egitim + summaryTotals.geribildirim}
+            hint={effectivePeriodLabel}
+            imageSrc={imageSrc}
+            tone="emerald"
+          />
+        ) : (
+          <>
+            <MetricCard
+              label={primaryTypeLabel}
+              value={summaryTotals.egitim}
+              hint={effectivePeriodLabel}
+              imageSrc={imageSrc}
+              tone="emerald"
+            />
+            <MetricCard
+              label="Geribildirim"
+              value={summaryTotals.geribildirim}
+              hint="İletilen adet"
+              imageSrc="/visuals/graduation.jpg"
+              tone="violet"
+            />
+          </>
+        )}
+        <MetricCard
+          label="Personel"
+          value={summary.length}
+          hint="Kayıtı olan kişi"
+          tone="blue"
+        />
+        <MetricCard
+          label="Toplam kayıt"
+          value={rows.length}
+          hint="Geçmiş satır"
+          tone="slate"
+        />
+      </section>
+
+      <section className="panel-card overflow-hidden">
+        <SectionHeader
+          title="Dönem Özeti"
+          description="Günlük, haftalık ve aylık eğitim / geribildirim adetleri"
+        />
         <div className="p-5">
           <TrainingPeriodStats
             periodCounts={periodCounts}
             activePeriod={period}
             onPeriodChange={(p) => patchFilters({ period: p })}
+            mode={periodStatsMode}
           />
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Personel Özeti</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Tarih aralığına göre personel bazında eğitim ve geribildirim adetleri
-          </p>
-        </div>
+      <section className="panel-card overflow-hidden">
+        <SectionHeader
+          title="Personel Özeti"
+          description="Tarih aralığına göre personel bazında eğitim ve geribildirim adetleri"
+        />
         <div className="border-b border-slate-100 px-5 py-4">
           <p className="mb-3 text-sm text-slate-500">
             Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
@@ -427,70 +512,38 @@ export function ManualTrainingPage() {
             ) : null}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-100/90 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-              <tr>
-                <SortableTh
-                  label="Personel"
-                  sortKey="personelName"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(k) => summarySort.toggleSort(k as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
+        <div className="p-5">
+          {showSkeleton ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-40 animate-pulse rounded-3xl bg-slate-100" />
+              ))}
+            </div>
+          ) : summary.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">Bu tarih aralığında kayıt yok.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sortedSummary.map((row) => (
+                <PersonCard
+                  key={row.personelName}
+                  name={row.personelName}
+                  stats={
+                    hideRecordType
+                      ? [
+                          {
+                            label: primaryTypeLabel,
+                            value: row.egitimAdedi + row.geribildirimAdedi,
+                          },
+                        ]
+                      : [
+                          { label: primaryTypeLabel, value: row.egitimAdedi },
+                          { label: "Geribildirim", value: row.geribildirimAdedi },
+                        ]
+                  }
                 />
-                <SortableTh
-                  label="Alınan Eğitim Adedi"
-                  sortKey="egitimAdedi"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(k) => summarySort.toggleSort(k as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
-                />
-                <SortableTh
-                  label="Alınan Geribildirim Adedi"
-                  sortKey="geribildirimAdedi"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(k) => summarySort.toggleSort(k as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
-                />
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <tr>
-                  <td colSpan={3} className="px-5 py-8 text-center text-slate-500">
-                    Yükleniyor...
-                  </td>
-                </tr>
-              ) : summary.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-5 py-8 text-center text-slate-500">
-                    Bu tarih aralığında kayıt yok.
-                  </td>
-                </tr>
-              ) : (
-                <>
-                  {sortedSummary.map((row, i) => (
-                    <tr
-                      key={row.personelName}
-                      className={cn("border-t border-slate-100", i % 2 === 1 && "bg-slate-50/60")}
-                    >
-                      <td className="px-5 py-3 font-semibold text-slate-900">{row.personelName}</td>
-                      <td className="px-5 py-3">{row.egitimAdedi}</td>
-                      <td className="px-5 py-3">{row.geribildirimAdedi}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-slate-200 bg-brand-50/50 font-semibold text-slate-900">
-                    <td className="px-5 py-3">Toplam</td>
-                    <td className="px-5 py-3">{summaryTotals.egitim}</td>
-                    <td className="px-5 py-3">{summaryTotals.geribildirim}</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -510,10 +563,9 @@ export function ManualTrainingPage() {
         showSkeleton={showSkeleton}
         rows={rows}
         onEdit={openEditForm}
-        onDelete={async (id) => {
-          await fetch(`/api/training/${id}`, { method: "DELETE", credentials: "include" });
-          invalidateModuleDataCaches("EGITIM");
-        }}
+        trainerLabel={trainerLabel}
+        primaryTypeLabel={primaryTypeLabel}
+        hideRecordType={hideRecordType}
       />
     </div>
   );
@@ -540,12 +592,16 @@ function Table({
   showSkeleton,
   rows,
   onEdit,
-  onDelete,
+  trainerLabel,
+  primaryTypeLabel,
+  hideRecordType,
 }: {
   showSkeleton: boolean;
   rows: Row[];
   onEdit: (row: Row) => void;
-  onDelete: (id: string) => void;
+  trainerLabel: string;
+  primaryTypeLabel: string;
+  hideRecordType: boolean;
 }) {
   const { sortKey, sortDir, toggleSort, sort } = useClientTableSort<
     "createdAt" | "recordType" | "personelName" | "startTime" | "topic" | "trainer"
@@ -562,9 +618,10 @@ function Table({
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
+    <div className="panel-card overflow-hidden">
       <div className="border-b border-slate-100 px-5 py-3">
-        <h2 className="font-semibold text-slate-900">Tüm Kayıtlar</h2>
+        <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">Geçmiş kayıtlar</h2>
+        <p className="text-xs text-slate-500">Eklenen kayıtlar silinmez.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
@@ -578,14 +635,16 @@ function Table({
                 onSort={(k) => toggleSort(k as typeof sortKey)}
                 className="px-4 py-3"
               />
-              <SortableTh
-                label="Tür"
-                sortKey="recordType"
-                activeKey={sortKey}
-                dir={sortDir}
-                onSort={(k) => toggleSort(k as typeof sortKey)}
-                className="px-4 py-3"
-              />
+              {hideRecordType ? null : (
+                <SortableTh
+                  label="Tür"
+                  sortKey="recordType"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={(k) => toggleSort(k as typeof sortKey)}
+                  className="px-4 py-3"
+                />
+              )}
               <SortableTh
                 label="Personel"
                 sortKey="personelName"
@@ -611,7 +670,7 @@ function Table({
                 className="px-4 py-3"
               />
               <SortableTh
-                label="Eğitmen"
+                label={trainerLabel}
                 sortKey="trainer"
                 activeKey={sortKey}
                 dir={sortDir}
@@ -624,13 +683,13 @@ function Table({
           <tbody>
             {showSkeleton ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={hideRecordType ? 6 : 7} className="px-4 py-8 text-center text-slate-500">
                   Yükleniyor...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={hideRecordType ? 6 : 7} className="px-4 py-8 text-center text-slate-500">
                   Kayıt bulunamadı.
                 </td>
               </tr>
@@ -638,9 +697,11 @@ function Table({
               sortedRows.map((row) => (
                 <tr key={row.id} className="border-t border-slate-100">
                   <td className="whitespace-nowrap px-4 py-3">{formatKayitTarihi(row.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <RecordTypeBadge type={row.recordType} />
-                  </td>
+                  {hideRecordType ? null : (
+                    <td className="px-4 py-3">
+                      <RecordTypeBadge type={row.recordType} primaryTypeLabel={primaryTypeLabel} />
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-medium">{row.personelName}</td>
                   <td className="px-4 py-3">
                     {row.startTime} - {row.endTime}
@@ -648,22 +709,14 @@ function Table({
                   <td className="px-4 py-3">{row.topic}</td>
                   <td className="px-4 py-3">{row.trainer}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => onEdit(row)}
-                        className="rounded p-1 hover:bg-slate-100"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(row.id)}
-                        className="rounded p-1 text-rose-600 hover:bg-rose-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onEdit(row)}
+                      className="rounded p-1 hover:bg-slate-100"
+                      aria-label="Düzenle"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
                   </td>
                 </tr>
               ))
@@ -675,16 +728,22 @@ function Table({
   );
 }
 
-function RecordTypeBadge({ type }: { type: TrainingRecordType }) {
+function RecordTypeBadge({
+  type,
+  primaryTypeLabel,
+}: {
+  type: TrainingRecordType;
+  primaryTypeLabel: string;
+}) {
   const isTraining = type === "EGITIM";
   return (
     <span
       className={cn(
         "inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold",
-        isTraining ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800",
+        isTraining ? "bg-brand-100 text-brand-800" : "bg-teal-100 text-teal-900",
       )}
     >
-      {TRAINING_RECORD_LABELS[type]}
+      {isTraining ? primaryTypeLabel : TRAINING_RECORD_LABELS.GERIBILDIRIM}
     </span>
   );
 }

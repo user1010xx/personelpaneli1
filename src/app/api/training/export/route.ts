@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { rowsToWorkbook } from "@/lib/excel";
+import { rowsToWorkbook } from "@/lib/excel-export";
 import { TRAINING_RECORD_LABELS, trainingDateRange } from "@/lib/training";
 import { parseDate, requireApiUser } from "@/lib/api-helpers";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";

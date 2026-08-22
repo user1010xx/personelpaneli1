@@ -13,7 +13,6 @@ export type ModuleStats = {
   period: Period;
   recordCount: number;
   uniquePersonel: number;
-  /** Personel modülü: listedeki tüm benzersiz personel (dönemden bağımsız) */
   totalPersonelCount?: number;
   averages: { key: string; value: number }[];
 };

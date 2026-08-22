@@ -65,7 +65,7 @@ export async function PATCH(
       auth.user!,
       "INSIYATIF_CALISMA_GUNCELLE",
       `İnsiyatif çalışma kaydını güncelledi: ${row.personelName}.`,
-      { moduleKey: "INITIATIVE_WORK", metadata: { recordId: row.id } },
+      { moduleKey: "INITIATIVE_WORK", metadata: { recordId: row.id, personelName: row.personelName } },
     );
 
     return NextResponse.json({ row });
@@ -101,7 +101,7 @@ export async function DELETE(
     auth.user!,
     "INSIYATIF_CALISMA_SIL",
     `İnsiyatif çalışma kaydını sildi: ${existing.personelName}.`,
-    { moduleKey: "INITIATIVE_WORK", metadata: { recordId: id } },
+    { moduleKey: "INITIATIVE_WORK", metadata: { recordId: id, personelName: existing.personelName } },
   );
   return NextResponse.json({ ok: true });
 }

@@ -8,16 +8,16 @@ type PanelLogoProps = {
 };
 
 const sizeMap = {
-  sm: { box: "h-9 w-9", img: 36, radius: "rounded-lg" },
-  md: { box: "h-11 w-11", img: 44, radius: "rounded-xl" },
-  lg: { box: "h-14 w-14", img: 56, radius: "rounded-2xl" },
+  sm: { box: "h-8 w-8", img: 32, radius: "rounded-lg" },
+  md: { box: "h-10 w-10", img: 40, radius: "rounded-xl" },
+  lg: { box: "h-12 w-12", img: 48, radius: "rounded-xl" },
 } as const;
 
 export function PanelLogo({ size = "md", showStatus = true, className }: PanelLogoProps) {
   const s = sizeMap[size];
 
   return (
-    <div className={cn("relative shrink-0 shadow-lg shadow-brand-600/30", s.box, s.radius, className)}>
+    <div className={cn("relative shrink-0 overflow-hidden ring-1 ring-black/10", s.box, s.radius, className)}>
       <Image
         src="/panel-icon.png"
         alt="Çağrı Merkezi Paneli"
@@ -27,7 +27,7 @@ export function PanelLogo({ size = "md", showStatus = true, className }: PanelLo
         priority
       />
       {showStatus ? (
-        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-sidebar" />
+        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-brand-400 ring-2 ring-sidebar" />
       ) : null}
     </div>
   );

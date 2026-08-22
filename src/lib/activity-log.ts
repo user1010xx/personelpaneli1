@@ -1,6 +1,7 @@
 import type { Role } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { notifyPanelActivity } from "@/lib/telegram/notify";
 
 export type ActivityUser = {
   id: string;
@@ -10,17 +11,12 @@ export type ActivityUser = {
 };
 
 export const MODULE_TITLES: Record<string, string> = {
-  PERSONEL: "Personel",
-  PUANTAJ: "Puantaj",
-  WHATSAPP: "WhatsApp Süreci",
-  UYARI_KESINTI: "Uyarı Kesinti",
-  UYE_ADEDI: "Üye Adedi",
-  CAGRI_SURECI: "Çağrı Süreci",
   EGITIM: "Eğitim Geribildirim",
-  KALITE: "Kalite Puanlaması",
+  CALL_FEEDBACK: "Çağrı Geribildirim",
+  KALITE: "Çağrı Denetleme",
   INITIATIVE_WORK: "İnsiyatif Çalışma",
+  SUGGESTION_REQUEST: "Öneri - Talep",
   USERS: "Kullanıcı Yönetimi",
-  PERSONEL_ALIAS: "Personel Eşleştirme",
   LOG: "İşlem Logu",
 };
 
@@ -54,6 +50,14 @@ export function logActivity(
           ? (options.metadata as Prisma.InputJsonValue)
           : undefined,
       },
+    })
+    .then(() => {
+      notifyPanelActivity({
+        userName: user.name,
+        action,
+        description,
+        metadata: options?.metadata,
+      });
     })
     .catch((err) => {
       console.error("[activity-log]", err);

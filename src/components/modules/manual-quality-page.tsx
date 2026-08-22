@@ -16,6 +16,9 @@ import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
 import { invalidateModuleDataCaches } from "@/lib/panel-cache";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PersonCard } from "@/components/ui/person-card";
+import { PageHeader, SectionHeader } from "@/components/ui/page-header";
 
 type Row = {
   id: string;
@@ -46,6 +49,7 @@ type QualityApiResponse = {
     weekly: number;
     monthly: number;
   };
+  truncated?: boolean;
 };
 
 function formatKayitTarihi(iso: string) {
@@ -107,6 +111,7 @@ export function ManualQualityPage() {
       period: filters.period,
       from: effectiveFrom,
       to: effectiveTo,
+      pageSize: "5000",
     });
     return p;
   }, [effectiveFrom, effectiveTo, filters]);
@@ -227,13 +232,11 @@ export function ManualQualityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Kalite Puanlaması</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manuel kalite kayıtları — veriler kalıcı olarak saklanır.
-          </p>
-        </div>
+      <PageHeader
+        kicker="Operasyon"
+        title="Çağrı Denetleme"
+        description="Dinlenen çağrıları puanlayın, not alın ve personel bazında geçmişi görün."
+        actions={
         <div className="flex flex-wrap items-center gap-2">
           <div ref={formAnchorRef} className="relative">
             <Button
@@ -252,7 +255,7 @@ export function ManualQualityPage() {
               <div className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),28rem)] animate-fade-in">
                 <form
                   onSubmit={onSubmit}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel-lg ring-1 ring-slate-100"
+                  className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-panel-lg"
                 >
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
@@ -334,7 +337,8 @@ export function ManualQualityPage() {
             Excel İndir
           </Button>
         </div>
-      </div>
+        }
+      />
 
       {message ? (
         <div
@@ -351,11 +355,47 @@ export function ManualQualityPage() {
 
       <RefreshingHint show={refreshing && rows.length > 0} />
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Puan Ortalamaları</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Günlük, haftalık ve aylık ortalama kalite puanı</p>
-        </div>
+      {data?.truncated ? (
+        <p className="text-xs font-medium text-amber-700">
+          Özet kayıt üst sınırı nedeniyle eksik hesaplanmış olabilir. Tarih aralığını daraltmayı
+          deneyin.
+        </p>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Dinlenen çağrı"
+          value={summaryTotals.adet}
+          hint={effectivePeriodLabel}
+          imageSrc="/visuals/headset.jpg"
+          tone="blue"
+        />
+        <MetricCard
+          label="Ortalama puan"
+          value={summaryTotals.ortalama.toFixed(1)}
+          hint="Seçilen dönem"
+          imageSrc="/visuals/headset.jpg"
+          tone="violet"
+        />
+        <MetricCard
+          label="Personel"
+          value={summary.length}
+          hint="Değerlendirilen kişi"
+          tone="emerald"
+        />
+        <MetricCard
+          label="Geçmiş kayıt"
+          value={rows.length}
+          hint="Listelenen satır"
+          tone="slate"
+        />
+      </section>
+
+      <section className="panel-card overflow-hidden">
+        <SectionHeader
+          title="Puan Ortalamaları"
+          description="Günlük, haftalık ve aylık ortalama kalite puanı"
+        />
         <div className="p-5">
           <QualityPeriodStats
             periodAverages={periodAverages}
@@ -366,13 +406,11 @@ export function ManualQualityPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-slate-900">Personel Özeti</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Tarih aralığına göre personel bazında adet ve ortalama puan
-          </p>
-        </div>
+      <section className="panel-card overflow-hidden">
+        <SectionHeader
+          title="Personel Özeti"
+          description="Tarih aralığına göre personel bazında adet ve ortalama puan"
+        />
         <div className="border-b border-slate-100 px-5 py-4">
           <p className="mb-3 text-sm text-slate-500">
             Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
@@ -408,70 +446,29 @@ export function ManualQualityPage() {
             ) : null}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-100/90 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-              <tr>
-                <SortableTh
-                  label="Personel"
-                  sortKey="personelName"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(k) => summarySort.toggleSort(k as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
+        <div className="p-5">
+          {showSkeleton ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-40 animate-pulse rounded-3xl bg-slate-100" />
+              ))}
+            </div>
+          ) : summary.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">Bu tarih aralığında kayıt yok.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sortedSummary.map((row) => (
+                <PersonCard
+                  key={row.personelName}
+                  name={row.personelName}
+                  stats={[
+                    { label: "Dinlenen çağrı", value: row.adet },
+                    { label: "Ortalama puan", value: row.ortalama.toFixed(1) },
+                  ]}
                 />
-                <SortableTh
-                  label="Adet"
-                  sortKey="adet"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(k) => summarySort.toggleSort(k as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
-                />
-                <SortableTh
-                  label="Ortalama"
-                  sortKey="ortalama"
-                  activeKey={summarySort.sortKey}
-                  dir={summarySort.sortDir}
-                  onSort={(k) => summarySort.toggleSort(k as typeof summarySort.sortKey)}
-                  className="px-5 py-3"
-                />
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <tr>
-                  <td colSpan={3} className="px-5 py-8 text-center text-slate-500">
-                    Yükleniyor...
-                  </td>
-                </tr>
-              ) : summary.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-5 py-8 text-center text-slate-500">
-                    Bu tarih aralığında kayıt yok.
-                  </td>
-                </tr>
-              ) : (
-                <>
-                  {sortedSummary.map((row, i) => (
-                    <tr
-                      key={row.personelName}
-                      className={cn("border-t border-slate-100", i % 2 === 1 && "bg-slate-50/60")}
-                    >
-                      <td className="px-5 py-3 font-semibold text-slate-900">{row.personelName}</td>
-                      <td className="px-5 py-3">{row.adet}</td>
-                      <td className="px-5 py-3">{row.ortalama}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-slate-200 bg-brand-50/50 font-semibold text-slate-900">
-                    <td className="px-5 py-3">Toplam</td>
-                    <td className="px-5 py-3">{summaryTotals.adet}</td>
-                    <td className="px-5 py-3">{summaryTotals.ortalama}</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -543,9 +540,11 @@ function Table({
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
+    <div className="panel-card overflow-hidden">
       <div className="border-b border-slate-100 px-5 py-3">
-        <h2 className="font-semibold text-slate-900">Tüm Kayıtlar</h2>
+        <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+          Geçmiş denetlemeler
+        </h2>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
@@ -616,7 +615,24 @@ function Table({
                   <td className="px-4 py-3">{row.score}</td>
                   <td className="max-w-xs truncate px-4 py-3">{row.note}</td>
                   <td className="px-4 py-3">
-                    <RowActions row={row} onEdit={onEdit} onDelete={onDelete} />
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(row)}
+                        className="rounded p-1 hover:bg-slate-100"
+                        aria-label="Düzenle"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(row.id)}
+                        className="rounded p-1 text-rose-600 hover:bg-rose-50"
+                        aria-label="Sil"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -628,27 +644,4 @@ function Table({
   );
 }
 
-function RowActions({
-  row,
-  onEdit,
-  onDelete,
-}: {
-  row: Row;
-  onEdit: (row: Row) => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <div className="flex gap-1">
-      <button type="button" onClick={() => onEdit(row)} className="rounded p-1 hover:bg-slate-100">
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onDelete(row.id)}
-        className="rounded p-1 text-rose-600 hover:bg-rose-50"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
+

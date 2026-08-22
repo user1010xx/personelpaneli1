@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { formatDuration, getDashboardData } from "@/lib/dashboard";
-import { rowsToWorkbook } from "@/lib/excel";
+import { getDashboardData } from "@/lib/dashboard";
+import { rowsToWorkbook } from "@/lib/excel-export";
 import { parseDate, requireApiUser } from "@/lib/api-helpers";
 
 export async function GET(request: Request) {
@@ -17,14 +17,13 @@ export async function GET(request: Request) {
   const buffer = await rowsToWorkbook(
     data.rows.map((p) => ({
       personel_adi: p.personelName,
-      uye_adedi: p.uyeAdedi,
-      ilk_yat_adedi: p.ilkYatAdedi,
-      ortalama_arama_adedi: p.ortalamaAramaAdedi,
-      ortalama_konusma_suresi: formatDuration(p.ortalamaKonusmaSuresi),
-      ortalama_cagri_puani: p.ortalamaCagriPuani,
-      ortalama_whatsapp_cevapsiz: p.ortalamaWhatsappCevapsiz,
+      dinlenen_cagri_adedi: p.dinlenenCagriAdedi,
+      ortalama_puan: p.ortalamaPuan,
+      insiyatif_calisma_adedi: p.insiyatifAdedi,
+      geribildirim_adedi: p.geribildirimAdedi,
+      egitim_adedi: p.egitimAdedi,
     })),
-    "Personel Performans",
+    "Personel Ozeti",
   );
 
   return new NextResponse(buffer, {

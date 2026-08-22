@@ -8,8 +8,7 @@ import {
   parseWorkDuration,
 } from "@/lib/initiative-work";
 import { logActivity } from "@/lib/activity-log";
-
-const MAX_ROWS = 25_000;
+import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
 
 const createSchema = z.object({
   personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
@@ -37,14 +36,14 @@ export async function GET(request: Request) {
   const rows = await prisma.initiativeWork.findMany({
     where,
     orderBy: [{ recordDate: sortDir }, { createdAt: sortDir }],
-    take: MAX_ROWS,
+    take: AGGREGATE_ROW_LIMIT,
   });
 
   return jsonResponse({
     rows,
     summary: buildInitiativeWorkSummary(rows),
     total: rows.length,
-    truncated: rows.length >= MAX_ROWS,
+    truncated: rows.length >= AGGREGATE_ROW_LIMIT,
   });
 }
 
@@ -82,7 +81,16 @@ export async function POST(request: Request) {
       auth.user!,
       "INSIYATIF_CALISMA_EKLE",
       `İnsiyatif çalışma kaydı ekledi: ${body.personelName} (${body.recordDate}).`,
-      { moduleKey: "INITIATIVE_WORK", metadata: { recordId: row.id } },
+      {
+        moduleKey: "INITIATIVE_WORK",
+        metadata: {
+          recordId: row.id,
+          personelName: row.personelName,
+          recordDate: body.recordDate,
+          callCount: row.callCount,
+          memberCount: row.memberCount,
+        },
+      },
     );
 
     return jsonResponse({ row }, 201);

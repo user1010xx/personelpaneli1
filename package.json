@@ -19,14 +19,12 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
-    "googleapis": "^173.0.0",
     "jose": "^6.0.10",
     "lucide-react": "^0.511.0",
     "next": "15.5.18",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.3.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "zod": "^3.24.4"
   },
   "devDependencies": {

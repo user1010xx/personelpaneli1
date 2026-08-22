@@ -20,6 +20,5 @@ export const trainingTimesSchema = z
     { message: "Bitiş saati başlangıçtan sonra olmalı" },
   );
 
-export const MAX_EXCEL_BYTES = 10 * 1024 * 1024;
-
 export const EXPORT_ROW_LIMIT = 10_000;
+export const AGGREGATE_ROW_LIMIT = 25_000;

@@ -55,9 +55,17 @@ export async function PATCH(
     });
     logActivity(
       auth.user!,
-      "KALITE_GUNCELLE",
-      `Kalite puanını güncelledi: ${row.personelName} — puan ${row.score}.`,
-      { moduleKey: "KALITE", metadata: { recordId: row.id } },
+      "CAGRI_DENETLEME_GUNCELLE",
+      `Çağrı denetlemesini güncelledi: ${row.personelName} — puan ${row.score}.`,
+      {
+        moduleKey: "KALITE",
+        metadata: {
+          recordId: row.id,
+          personelName: row.personelName,
+          phone: row.phone,
+          score: row.score,
+        },
+      },
     );
     return NextResponse.json({ row });
   } catch (error) {
@@ -90,9 +98,12 @@ export async function DELETE(
   await prisma.qualityScore.delete({ where: { id } });
   logActivity(
     auth.user!,
-    "KALITE_SIL",
-    `Kalite puan kaydını sildi: ${existing.personelName} — puan ${existing.score}.`,
-    { moduleKey: "KALITE", metadata: { recordId: id } },
+    "CAGRI_DENETLEME_SIL",
+    `Çağrı denetlemesini sildi: ${existing.personelName} — puan ${existing.score}.`,
+    {
+      moduleKey: "KALITE",
+      metadata: { recordId: id, personelName: existing.personelName, score: existing.score },
+    },
   );
   return NextResponse.json({ ok: true });
 }

@@ -13,24 +13,28 @@ type Props = {
   };
   activePeriod: Period;
   onPeriodChange: (period: Period) => void;
+  mode?: "split" | "simple";
 };
 
-export function TrainingPeriodStats({ periodCounts, activePeriod, onPeriodChange }: Props) {
+export function TrainingPeriodStats({
+  periodCounts,
+  activePeriod,
+  onPeriodChange,
+  mode = "split",
+}: Props) {
   const periods: Period[] = ["daily", "weekly", "monthly"];
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="segmented-control">
         {periods.map((period) => (
           <button
             key={period}
             type="button"
             onClick={() => onPeriodChange(period)}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-semibold transition-all",
-              activePeriod === period
-                ? "bg-brand-600 text-white shadow-md shadow-brand-600/25"
-                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50",
+              "segmented-item",
+              activePeriod === period && "segmented-item-active",
             )}
           >
             {PERIOD_LABELS[period]}
@@ -45,7 +49,7 @@ export function TrainingPeriodStats({ periodCounts, activePeriod, onPeriodChange
               key={period}
               className={cn(
                 "panel-card p-4 transition-all",
-                activePeriod === period && "ring-2 ring-brand-500/20",
+                activePeriod === period && "ring-1 ring-brand-500/25",
               )}
             >
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -54,13 +58,17 @@ export function TrainingPeriodStats({ periodCounts, activePeriod, onPeriodChange
               <p className="mt-2 font-display text-3xl font-bold text-brand-700">{data?.toplam ?? 0}</p>
               <p className="text-xs text-slate-500">toplam kayıt</p>
               <div className="mt-3 space-y-1 text-sm text-slate-600">
-                <p>
-                  Eğitim: <span className="font-semibold text-sky-700">{data?.egitim ?? 0}</span>
-                </p>
-                <p>
-                  Geribildirim:{" "}
-                  <span className="font-semibold text-violet-700">{data?.geribildirim ?? 0}</span>
-                </p>
+                {mode === "split" ? (
+                  <>
+                    <p>
+                      Eğitim: <span className="font-semibold text-brand-800">{data?.egitim ?? 0}</span>
+                    </p>
+                    <p>
+                      Geribildirim:{" "}
+                      <span className="font-semibold text-teal-800">{data?.geribildirim ?? 0}</span>
+                    </p>
+                  </>
+                ) : null}
                 <p>
                   Personel: <span className="font-semibold text-slate-800">{data?.personel ?? 0}</span>
                 </p>

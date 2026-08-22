@@ -25,17 +25,15 @@ export function QualityPeriodStats({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="segmented-control">
         {periods.map((period) => (
           <button
             key={period}
             type="button"
             onClick={() => onPeriodChange(period)}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-semibold transition-all",
-              activePeriod === period
-                ? "bg-brand-600 text-white shadow-md shadow-brand-600/25"
-                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50",
+              "segmented-item",
+              activePeriod === period && "segmented-item-active",
             )}
           >
             {PERIOD_LABELS[period]}
@@ -51,7 +49,7 @@ export function QualityPeriodStats({
               key={period}
               className={cn(
                 "panel-card p-4 transition-all",
-                activePeriod === period && "ring-2 ring-brand-500/20",
+                activePeriod === period && "ring-1 ring-brand-500/25",
               )}
             >
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">

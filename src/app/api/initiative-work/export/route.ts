@@ -5,9 +5,8 @@ import {
   buildInitiativeWorkSummary,
   initiativeWorkDateRange,
 } from "@/lib/initiative-work";
-import { rowsToWorkbook } from "@/lib/excel";
-
-const EXPORT_LIMIT = 100_000;
+import { rowsToWorkbook } from "@/lib/excel-export";
+import { EXPORT_ROW_LIMIT } from "@/lib/validation";
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -24,7 +23,7 @@ export async function GET(request: Request) {
       ...(from || to ? { recordDate: initiativeWorkDateRange(from, to) } : {}),
     },
     orderBy: [{ recordDate: "desc" }, { createdAt: "desc" }],
-    take: EXPORT_LIMIT,
+    take: EXPORT_ROW_LIMIT,
   });
 
   const buffer = await rowsToWorkbook(

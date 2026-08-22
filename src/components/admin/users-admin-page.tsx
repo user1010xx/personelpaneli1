@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { KeyRound, Save, Trash2 } from "lucide-react";
-import type { ModuleKey } from "@prisma/client";
-import { SHEET_MODULES } from "@/lib/modules";
+import { KeyRound, Trash2 } from "lucide-react";
 import { normalizeEmailInput, validateUserFormClient } from "@/lib/user-validation";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input, Label } from "@/components/ui/input";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { useClientTableSort } from "@/components/ui/sortable-th";
@@ -16,13 +15,6 @@ type User = {
   email: string;
   role: "ADMIN" | "USER";
   active: boolean;
-};
-
-const MODULE_LABELS: Record<string, string> = {
-  PERSONEL: "Personel",
-  PUANTAJ: "Puantaj",
-  WHATSAPP: "WhatsApp Süreci",
-  UYARI_KESINTI: "Uyarı Kesinti",
 };
 
 function generatePassword(length = 10) {
@@ -46,7 +38,6 @@ async function readJson(res: Response) {
 
 export function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [sheetForms, setSheetForms] = useState<Record<string, { spreadsheetId: string; sheetName: string }>>({});
   const [userForm, setUserForm] = useState<{
     name: string;
     email: string;
@@ -61,24 +52,9 @@ export function UsersAdminPage() {
   const sortedUsers = useMemo(() => sort(users), [users, sort]);
 
   async function load() {
-    const [usersRes, configRes] = await Promise.all([
-      fetch("/api/users", { credentials: "include" }),
-      fetch("/api/sheets/config", { credentials: "include" }),
-    ]);
+    const usersRes = await fetch("/api/users", { credentials: "include" });
     const usersJson = await usersRes.json();
-    const configJson = await configRes.json();
     if (usersRes.ok) setUsers(usersJson.users);
-    if (configRes.ok) {
-      const map: Record<string, { spreadsheetId: string; sheetName: string }> = {};
-      for (const key of SHEET_MODULES) {
-        const found = configJson.configs.find((c: { moduleKey: string }) => c.moduleKey === key);
-        map[key] = {
-          spreadsheetId: found?.spreadsheetId ?? "",
-          sheetName: found?.sheetName ?? "Sayfa1",
-        };
-      }
-      setSheetForms(map);
-    }
   }
 
   useEffect(() => {
@@ -112,31 +88,13 @@ export function UsersAdminPage() {
     void load();
   }
 
-  async function saveSheetConfig(moduleKey: ModuleKey) {
-    const form = sheetForms[moduleKey];
-    const res = await fetch("/api/sheets/config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        moduleKey,
-        spreadsheetId: form.spreadsheetId,
-        sheetName: form.sheetName,
-      }),
-    });
-    if (res.ok) {
-      setMessage({ text: `${MODULE_LABELS[moduleKey]} bağlantısı kaydedildi`, type: "ok" });
-    }
-  }
-
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Kullanıcı Yönetimi</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Kullanıcılar ve Google Sheets bağlantıları (yalnızca admin).
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        kicker="Sistem"
+        title="Kullanıcı Yönetimi"
+        description="Kullanıcı hesapları, roller ve erişim (yalnızca admin)."
+      />
 
       {message ? (
         <div
@@ -150,8 +108,10 @@ export function UsersAdminPage() {
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
-        <h2 className="mb-4 text-lg font-semibold">Yeni Kullanıcı</h2>
+      <section className="panel-card p-5">
+        <h2 className="mb-4 font-display text-base font-semibold tracking-tight text-ink-900">
+          Yeni Kullanıcı
+        </h2>
         <form onSubmit={createUser} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <Label>Ad Soyad</Label>
@@ -174,13 +134,13 @@ export function UsersAdminPage() {
             />
           </div>
           <div>
-            <Label>Şifre (en az 6 karakter)</Label>
+            <Label>Şifre (en az 8 karakter)</Label>
             <div className="flex gap-2">
               <Input
                 type="text"
                 value={userForm.password}
                 onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                minLength={6}
+                minLength={8}
                 required
               />
               <Button
@@ -209,8 +169,10 @@ export function UsersAdminPage() {
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
-        <h2 className="border-b border-slate-100 px-5 py-4 text-lg font-semibold">Kullanıcılar</h2>
+      <section className="panel-card overflow-hidden">
+        <h2 className="border-b border-[var(--border)] px-5 py-4 font-display text-base font-semibold tracking-tight text-ink-900">
+          Kullanıcılar
+        </h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -263,20 +225,6 @@ export function UsersAdminPage() {
           </table>
         </div>
       </section>
-
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Google Sheets Bağlantıları</h2>
-        {SHEET_MODULES.map((moduleKey) => (
-          <SheetConfigCard
-            key={moduleKey}
-            moduleKey={moduleKey}
-            label={MODULE_LABELS[moduleKey]}
-            sheetForms={sheetForms}
-            setSheetForms={setSheetForms}
-            onSave={() => void saveSheetConfig(moduleKey)}
-          />
-        ))}
-      </section>
     </div>
   );
 }
@@ -301,8 +249,8 @@ function UserRow({
   }, [user.role, user.active]);
 
   async function save() {
-    if (password && password.length < 6) {
-      onMessage({ text: "Yeni şifre en az 6 karakter olmalı", type: "error" });
+    if (password && password.length < 8) {
+      onMessage({ text: "Yeni şifre en az 8 karakter olmalı", type: "error" });
       return;
     }
     setSaving(true);
@@ -381,7 +329,7 @@ function UserRow({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Yeni şifre"
-              minLength={6}
+              minLength={8}
             />
             <Button type="button" size="sm" variant="secondary" onClick={() => setPassword(generatePassword(10))}>
               <KeyRound className="h-4 w-4" />
@@ -403,67 +351,5 @@ function UserRow({
         </div>
       </td>
     </tr>
-  );
-}
-
-function SheetConfigCard({
-  moduleKey,
-  label,
-  sheetForms,
-  setSheetForms,
-  onSave,
-}: {
-  moduleKey: ModuleKey;
-  label: string;
-  sheetForms: Record<string, { spreadsheetId: string; sheetName: string }>;
-  setSheetForms: React.Dispatch<React.SetStateAction<Record<string, { spreadsheetId: string; sheetName: string }>>>;
-  onSave: () => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-panel">
-      <h3 className="font-medium text-slate-900">{label}</h3>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <div>
-          <Label>Sheet URL veya ID</Label>
-          <Input
-            value={sheetForms[moduleKey]?.spreadsheetId ?? ""}
-            onChange={(e) =>
-              setSheetForms({
-                ...sheetForms,
-                [moduleKey]: {
-                  spreadsheetId: e.target.value,
-                  sheetName: sheetForms[moduleKey]?.sheetName ?? "Sayfa1",
-                },
-              })
-            }
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-          />
-        </div>
-        <div>
-          <Label>Sekme Adı</Label>
-          <Input
-            value={sheetForms[moduleKey]?.sheetName ?? "Sayfa1"}
-            onChange={(e) =>
-              setSheetForms({
-                ...sheetForms,
-                [moduleKey]: {
-                  spreadsheetId: sheetForms[moduleKey]?.spreadsheetId ?? "",
-                  sheetName: e.target.value,
-                },
-              })
-            }
-            placeholder="Sayfa1 (dosyanın altındaki sekme adı)"
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            Türkçe Google Sheets’te varsayılan sekme adı genelde <strong>Sayfa1</strong> olur. Tek
-            sekme varsa yanlış ad girilse bile ilk sekme otomatik kullanılır.
-          </p>
-        </div>
-      </div>
-      <Button className="mt-3" variant="secondary" onClick={onSave}>
-        <Save className="h-4 w-4" />
-        Kaydet
-      </Button>
-    </div>
   );
 }

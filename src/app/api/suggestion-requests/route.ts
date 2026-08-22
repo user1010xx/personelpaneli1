@@ -15,8 +15,10 @@ export async function GET() {
   const auth = await requireApiUserFromDb();
   if (auth.error) return auth.error;
 
+  const MAX_ROWS = 5_000;
   const rows = await prisma.suggestionRequest.findMany({
     orderBy: { createdAt: "desc" },
+    take: MAX_ROWS,
     include: { createdBy: { select: { id: true, name: true } } },
   });
 
@@ -33,6 +35,7 @@ export async function GET() {
       createdByName: row.createdBy?.name ?? null,
       canModify: auth.user!.role === "ADMIN" || auth.user!.id === row.createdById,
     })),
+    truncated: rows.length >= MAX_ROWS,
   });
 }
 
@@ -59,7 +62,15 @@ export async function POST(request: Request) {
     auth.user!,
     "ONERI_TALEP_EKLE",
     `${body.data.type === "TALEP" ? "Talep" : "Öneri"} ekledi: ${body.data.subject}`,
-    { moduleKey: "SUGGESTION_REQUEST", metadata: { id: row.id } },
+    {
+      moduleKey: "SUGGESTION_REQUEST",
+      metadata: {
+        id: row.id,
+        type: body.data.type,
+        reporterName: body.data.reporterName,
+        subject: body.data.subject,
+      },
+    },
   );
 
   return jsonResponse({ id: row.id }, 201);

@@ -5,9 +5,9 @@ import { computeModuleStats } from "@/lib/stats";
 import { averageScore, buildQualitySummary, qualityDateRange } from "@/lib/quality";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
-import { loadPersonelAliases } from "@/lib/personel-alias";
+import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
 
-const MAX_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 5_000;
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
     const where = filters.length ? { AND: filters } : undefined;
 
-    const [total, rows, aggregateRows, aliases] = await Promise.all([
+    const [total, rows, aggregateRows] = await Promise.all([
       prisma.qualityScore.count({ where }),
       prisma.qualityScore.findMany({
         where,
@@ -56,13 +56,13 @@ export async function GET(request: Request) {
           recordDate: true,
           createdAt: true,
         },
+        orderBy: [{ recordDate: "desc" }],
+        take: AGGREGATE_ROW_LIMIT,
       }),
-      loadPersonelAliases("KALITE"),
     ]);
 
     const summary = buildQualitySummary(
       aggregateRows.map((r) => ({ personelName: r.personelName, score: r.score })),
-      aliases,
     );
 
     const statRows = aggregateRows.map((r) => ({
@@ -94,6 +94,7 @@ export async function GET(request: Request) {
       stats,
       periodAverages,
       summaryOrtalama: averageScore(aggregateRows),
+      truncated: aggregateRows.length >= AGGREGATE_ROW_LIMIT,
     });
   } catch (error) {
     console.error("[quality GET]", error);
@@ -136,9 +137,18 @@ export async function POST(request: Request) {
     });
     logActivity(
       auth.user!,
-      "KALITE_EKLE",
-      `Kalite puanı ekledi: ${body.personelName} — puan ${body.score} (${body.recordDate}).`,
-      { moduleKey: "KALITE", metadata: { recordId: row.id } },
+      "CAGRI_DENETLEME_EKLE",
+      `Çağrı denetlemesi ekledi: ${body.personelName} — puan ${body.score} (${body.recordDate}).`,
+      {
+        moduleKey: "KALITE",
+        metadata: {
+          recordId: row.id,
+          personelName: row.personelName,
+          phone: row.phone,
+          score: row.score,
+          note: row.note,
+        },
+      },
     );
     return jsonResponse({ row }, 201);
   } catch (error) {

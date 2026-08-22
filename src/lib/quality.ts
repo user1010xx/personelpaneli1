@@ -1,10 +1,5 @@
 import { endOfDay, startOfDay } from "date-fns";
 import { normalizePersonelName } from "@/lib/utils";
-import {
-  type PersonelAliasMap,
-  resolvePersonelBucketKey,
-  resolvePersonelDisplayName,
-} from "@/lib/personel-alias";
 
 export type QualitySummaryRow = {
   personelName: string;
@@ -21,17 +16,12 @@ export function qualityDateRange(from: Date | null, to: Date | null) {
 
 export function buildQualitySummary(
   rows: { personelName: string; score: number }[],
-  aliases?: PersonelAliasMap,
 ): QualitySummaryRow[] {
   const map = new Map<string, { personelName: string; adet: number; total: number }>();
 
   for (const row of rows) {
-    const key = aliases
-      ? resolvePersonelBucketKey(row.personelName, aliases)
-      : normalizePersonelName(row.personelName);
-    const display = aliases
-      ? resolvePersonelDisplayName(row.personelName, aliases)
-      : row.personelName.trim();
+    const key = normalizePersonelName(row.personelName);
+    const display = row.personelName.trim();
     if (!map.has(key)) {
       map.set(key, { personelName: display, adet: 0, total: 0 });
     }

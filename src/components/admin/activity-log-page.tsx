@@ -8,6 +8,7 @@ import { SortableTh } from "@/components/ui/sortable-th";
 import { nextSortDir } from "@/lib/table-sort";
 import type { SortDir } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -66,12 +67,11 @@ export function ActivityLogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">LOG</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Tüm admin ve kullanıcı işlemleri — kim, ne zaman, ne yaptı.
-        </p>
-      </div>
+      <PageHeader
+        kicker="Sistem"
+        title="LOG"
+        description="Tüm admin ve kullanıcı işlemleri — kim, ne zaman, ne yaptı."
+      />
 
       <div className="filter-toolbar">
         <div className="filter-field min-w-[240px] flex-[2]">
@@ -139,7 +139,9 @@ export function ActivityLogPage() {
 
       <div className="data-table-wrap">
         <div className="panel-card-header">
-          <h2 className="text-sm font-bold text-slate-900">İşlem geçmişi</h2>
+          <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+            İşlem geçmişi
+          </h2>
           <p className="text-xs text-slate-500">En yeni kayıtlar üstte</p>
         </div>
         <div className="overflow-x-auto">

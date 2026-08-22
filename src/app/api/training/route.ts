@@ -4,10 +4,9 @@ import { prisma } from "@/lib/db";
 import { countTrainingByPeriod, buildTrainingSummary, trainingDateRange } from "@/lib/training";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
-import { timeStringSchema } from "@/lib/validation";
-import { loadPersonelAliases } from "@/lib/personel-alias";
+import { AGGREGATE_ROW_LIMIT, timeStringSchema } from "@/lib/validation";
 
-const MAX_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 5_000;
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -39,7 +38,7 @@ export async function GET(request: Request) {
 
     const where = filters.length ? { AND: filters } : undefined;
 
-    const [total, rows, aggregateRows, aliases] = await Promise.all([
+    const [total, rows, aggregateRows] = await Promise.all([
       prisma.trainingFeedback.count({ where }),
       prisma.trainingFeedback.findMany({
         where,
@@ -56,8 +55,9 @@ export async function GET(request: Request) {
           recordDate: true,
           createdAt: true,
         },
+        orderBy: [{ recordDate: "desc" }],
+        take: AGGREGATE_ROW_LIMIT,
       }),
-      loadPersonelAliases("EGITIM"),
     ]);
 
     const summary = buildTrainingSummary(
@@ -65,13 +65,12 @@ export async function GET(request: Request) {
         personelName: r.personelName,
         recordType: r.recordType ?? "EGITIM",
       })),
-      aliases,
     );
 
     const periodCounts = {
-      daily: countTrainingByPeriod(aggregateRows, "daily", undefined, aliases),
-      weekly: countTrainingByPeriod(aggregateRows, "weekly", undefined, aliases),
-      monthly: countTrainingByPeriod(aggregateRows, "monthly", undefined, aliases),
+      daily: countTrainingByPeriod(aggregateRows, "daily"),
+      weekly: countTrainingByPeriod(aggregateRows, "weekly"),
+      monthly: countTrainingByPeriod(aggregateRows, "monthly"),
     };
 
     return jsonResponse({
@@ -82,6 +81,7 @@ export async function GET(request: Request) {
       pageSize,
       periodCounts,
       period,
+      truncated: aggregateRows.length >= AGGREGATE_ROW_LIMIT,
     });
   } catch (error) {
     console.error("[training GET]", error);
@@ -97,7 +97,7 @@ const recordTypeSchema = z.enum(["EGITIM", "GERIBILDIRIM"]);
 const createSchema = z
   .object({
     personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
-    recordType: recordTypeSchema,
+    recordType: recordTypeSchema.optional(),
     recordDate: z.string().min(1),
     startTime: timeStringSchema,
     endTime: timeStringSchema,
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     const row = await prisma.trainingFeedback.create({
       data: {
         personelName: body.personelName,
-        recordType: body.recordType,
+        recordType: "EGITIM",
         recordDate,
         startTime: body.startTime,
         endTime: body.endTime,
@@ -143,7 +143,16 @@ export async function POST(request: Request) {
       auth.user!,
       "EGITIM_EKLE",
       `Eğitim kaydı oluşturdu: ${body.personelName} — ${body.topic} (${body.recordDate}, ${body.startTime}-${body.endTime}).`,
-      { moduleKey: "EGITIM", metadata: { recordId: row.id } },
+      {
+        moduleKey: "EGITIM",
+        metadata: {
+          recordId: row.id,
+          personelName: row.personelName,
+          topic: row.topic,
+          trainer: row.trainer,
+          recordDate: body.recordDate,
+        },
+      },
     );
     return jsonResponse({ row }, 201);
   } catch (error) {

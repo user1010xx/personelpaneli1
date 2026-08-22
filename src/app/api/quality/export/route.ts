@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { rowsToWorkbook } from "@/lib/excel";
+import { rowsToWorkbook } from "@/lib/excel-export";
 import { buildQualitySummary, qualityDateRange } from "@/lib/quality";
 import { parseDate, requireApiUser } from "@/lib/api-helpers";
-import { loadPersonelAliases } from "@/lib/personel-alias";
+import { EXPORT_ROW_LIMIT } from "@/lib/validation";
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -14,8 +14,7 @@ export async function GET(request: Request) {
   const from = parseDate(searchParams.get("from"));
   const to = parseDate(searchParams.get("to"));
 
-  const [rows, aliases] = await Promise.all([
-    prisma.qualityScore.findMany({
+  const rows = await prisma.qualityScore.findMany({
     where: {
       ...(search
         ? {
@@ -28,13 +27,12 @@ export async function GET(request: Request) {
         : {}),
       ...(from || to ? { recordDate: qualityDateRange(from, to) } : {}),
     },
-      select: { personelName: true, score: true },
-      orderBy: { personelName: "asc" },
-    }),
-    loadPersonelAliases("KALITE"),
-  ]);
+    select: { personelName: true, score: true },
+    orderBy: { personelName: "asc" },
+    take: EXPORT_ROW_LIMIT,
+  });
 
-  const summary = buildQualitySummary(rows, aliases);
+  const summary = buildQualitySummary(rows);
   const totalAdet = summary.reduce((total, row) => total + row.adet, 0);
   const totalScore = rows.reduce((total, row) => total + row.score, 0);
   const totalOrtalama = totalAdet > 0 ? Number((totalScore / totalAdet).toFixed(2)) : 0;

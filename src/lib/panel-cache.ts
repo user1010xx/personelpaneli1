@@ -47,22 +47,19 @@ export function markPanelCacheStale(urlPrefix: string) {
 }
 
 export function affectedPrefixesForModule(moduleKey: string) {
-  const dataPrefix = `/api/data/${moduleKey}`;
   switch (moduleKey) {
-    case "UYE_ADEDI":
-    case "CAGRI_SURECI":
-    case "WHATSAPP":
-      return [dataPrefix, "/api/dashboard"];
     case "KALITE":
       return ["/api/quality", "/api/dashboard"];
     case "EGITIM":
-      return ["/api/training"];
+      return ["/api/training", "/api/dashboard"];
+    case "CALL_FEEDBACK":
+      return ["/api/call-feedback", "/api/dashboard"];
     case "INITIATIVE_WORK":
-      return ["/api/initiative-work"];
-    case "PERSONEL_ALIAS":
-      return ["/api/dashboard", "/api/data/", "/api/quality", "/api/training"];
+      return ["/api/initiative-work", "/api/dashboard"];
+    case "SUGGESTION_REQUEST":
+      return ["/api/suggestion-requests"];
     default:
-      return [dataPrefix];
+      return [];
   }
 }
 
@@ -94,7 +91,14 @@ export function invalidateModulesDataCaches(moduleKeys: string[]) {
 }
 
 export function invalidateDataCaches() {
-  invalidatePrefixes(["/api/dashboard", "/api/training", "/api/quality", "/api/data/"]);
+  invalidatePrefixes([
+    "/api/dashboard",
+    "/api/training",
+    "/api/call-feedback",
+    "/api/quality",
+    "/api/initiative-work",
+    "/api/suggestion-requests",
+  ]);
 }
 
 export function eventAffectsPrefix(event: Event, prefix: string) {

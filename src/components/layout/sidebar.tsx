@@ -11,6 +11,7 @@ import {
   LogOut,
   ScrollText,
   Shield,
+  Sparkles,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,12 +26,13 @@ const iconMap = {
   star: Headphones,
   shield: Shield,
   "scroll-text": ScrollText,
+  sparkles: Sparkles,
   briefcase: BriefcaseBusiness,
 } as const;
 
 const NAV_GROUPS: { label: string; keys: string[] }[] = [
   { label: "Genel", keys: ["DASHBOARD", "SUGGESTION_REQUEST"] },
-  { label: "Operasyon", keys: ["EGITIM", "CALL_FEEDBACK", "KALITE", "INITIATIVE_WORK"] },
+  { label: "Operasyon", keys: ["EGITIM", "CALL_FEEDBACK", "KALITE", "EXAMPLE_CALL", "INITIATIVE_WORK"] },
   { label: "Sistem", keys: ["USERS", "LOG"] },
 ];
 

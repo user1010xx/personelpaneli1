@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { moduleTitle, roleLabel } from "@/lib/activity-log";
 import { rowsToWorkbook } from "@/lib/excel-export";
 import { formatWorkDuration, initiativeWorkDateRange } from "@/lib/initiative-work";
+import { exampleCallDateRange } from "@/lib/example-call";
 import { qualityDateRange } from "@/lib/quality";
 import { TRAINING_RECORD_LABELS, trainingDateRange } from "@/lib/training";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
@@ -13,6 +14,7 @@ export type ReportCommand =
   | "egitim"
   | "cagrigeribildirim"
   | "cagridenetleme"
+  | "ornekcagri"
   | "insiyatif";
 
 export const REPORT_COMMANDS: Record<
@@ -24,6 +26,7 @@ export const REPORT_COMMANDS: Record<
   egitim: { title: "Eğitim Geribildirim", filename: "egitim" },
   cagrigeribildirim: { title: "Çağrı Geribildirim", filename: "cagri-geribildirim" },
   cagridenetleme: { title: "Çağrı Denetleme", filename: "cagri-denetleme" },
+  ornekcagri: { title: "Örnek Çağrı ve Motivasyon", filename: "ornek-cagri" },
   insiyatif: { title: "İnsiyatif Çalışma", filename: "insiyatif" },
 };
 
@@ -137,6 +140,24 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
         is_tarihi: row.recordDate.toISOString().slice(0, 10),
       })),
       "Cagri Denetleme",
+    );
+    return { buffer, filename, count: rows.length, title: meta.title, label };
+  }
+
+  if (command === "ornekcagri") {
+    const rows = await prisma.exampleCall.findMany({
+      where: { recordDate: exampleCallDateRange(from, to) },
+      orderBy: [{ recordDate: "desc" }, { createdAt: "desc" }],
+      take: EXPORT_ROW_LIMIT,
+    });
+    const buffer = await rowsToWorkbook(
+      rows.map((row) => ({
+        olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        personel_adi: row.personelName,
+        numara: row.phone,
+        is_tarihi: row.recordDate.toISOString().slice(0, 10),
+      })),
+      "Ornek Cagri",
     );
     return { buffer, filename, count: rows.length, title: meta.title, label };
   }

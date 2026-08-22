@@ -10,6 +10,7 @@ describe("dashboard helpers", () => {
       insiyatifAdedi: 0,
       geribildirimAdedi: 0,
       egitimAdedi: 0,
+      ornekCagriAdedi: 0,
       personelAdedi: 0,
     });
   });
@@ -26,6 +27,11 @@ describe("dashboard helpers", () => {
           { personelName: "Ali Yılmaz", recordType: "GERIBILDIRIM" },
         ],
         callFeedback: [{ personelName: "Ali Yılmaz" }, { personelName: "ali yilmaz" }],
+        exampleCalls: [
+          { personelName: "Ali Yılmaz" },
+          { personelName: "Ali Yılmaz" },
+          { personelName: "ali yilmaz" },
+        ],
       },
       { from, to },
     );
@@ -37,7 +43,9 @@ describe("dashboard helpers", () => {
       insiyatifAdedi: 1,
       egitimAdedi: 1,
       geribildirimAdedi: 3,
+      ornekCagriAdedi: 3,
     });
+    expect(result.totals.ornekCagriAdedi).toBe(3);
     expect(result.totals.geribildirimAdedi).toBe(3);
     expect(result.totals.egitimAdedi).toBe(1);
   });

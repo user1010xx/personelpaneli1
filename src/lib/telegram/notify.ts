@@ -63,6 +63,18 @@ export function formatPanelActivityMessage(input: {
       islem = `${personel || "Personel"} çağrı geribildirimi güncellendi`;
       note = joinNote([personel, topic, trainer]);
       break;
+    case "ORNEK_CAGRI_EKLE":
+      islem = `${personel || "Personel"} örnek çağrı / motivasyon ekledi`;
+      note = joinNote([personel, phone, str(meta, "recordDate")]);
+      break;
+    case "ORNEK_CAGRI_GUNCELLE":
+      islem = `${personel || "Personel"} örnek çağrı / motivasyon güncellendi`;
+      note = joinNote([personel, phone]);
+      break;
+    case "ORNEK_CAGRI_SIL":
+      islem = `${personel || "Personel"} örnek çağrı / motivasyon silindi`;
+      note = joinNote([personel, phone]);
+      break;
     case "INSIYATIF_CALISMA_EKLE":
       islem = `${personel || "Personel"} insiyatif çalışma kaydı eklendi`;
       note = joinNote([

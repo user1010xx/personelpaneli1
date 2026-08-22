@@ -38,6 +38,9 @@ const START_TEXT = [
   "/cagridenetleme",
   "Çağrı denetleme (puan) kayıtlarını Excel olarak ister. Tarih veya tarih aralığı sorulur.",
   "",
+  "/ornek",
+  "Örnek çağrı ve motivasyon kayıtlarını Excel olarak ister. Tarih veya tarih aralığı sorulur.",
+  "",
   "/insiyatif",
   "İnsiyatif çalışma kayıtlarını Excel olarak ister. Tarih veya tarih aralığı sorulur.",
   "",
@@ -72,9 +75,17 @@ const COMMAND_ALIASES: Record<string, ReportCommand> = {
   cagridenetleme: "cagridenetleme",
   "cagri-denetleme": "cagridenetleme",
   kalite: "cagridenetleme",
+  ornek: "ornekcagri",
+  ornekcagri: "ornekcagri",
+  "ornek-cagri": "ornekcagri",
+  motivasyon: "ornekcagri",
   insiyatif: "insiyatif",
   "insiyatif-calisma": "insiyatif",
 };
+
+export function resolveTelegramReportCommand(name: string) {
+  return COMMAND_ALIASES[name] ?? null;
+}
 
 function parseCommand(text: string) {
   const trimmed = text.trim();

@@ -13,6 +13,7 @@ export type ActivityUser = {
 export const MODULE_TITLES: Record<string, string> = {
   EGITIM: "Eğitim Geribildirim",
   CALL_FEEDBACK: "Çağrı Geribildirim",
+  EXAMPLE_CALL: "Örnek Çağrı ve Motivasyon",
   KALITE: "Çağrı Denetleme",
   INITIATIVE_WORK: "İnsiyatif Çalışma",
   SUGGESTION_REQUEST: "Öneri - Talep",

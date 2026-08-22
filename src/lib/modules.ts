@@ -4,6 +4,7 @@ export type ModuleMeta = {
     | "KALITE"
     | "EGITIM"
     | "CALL_FEEDBACK"
+    | "EXAMPLE_CALL"
     | "USERS"
     | "LOG"
     | "SUGGESTION_REQUEST"
@@ -55,6 +56,14 @@ export const NAV_MODULES: ModuleMeta[] = [
     description: "Dinlenen çağrıların puan ve not kayıtları",
     source: "manual",
     icon: "star",
+  },
+  {
+    key: "EXAMPLE_CALL",
+    title: "Örnek Çağrı ve Motivasyon",
+    href: "/ornek-cagri",
+    description: "Örnek çağrı ve motivasyon adetleri",
+    source: "manual",
+    icon: "sparkles",
   },
   {
     key: "INITIATIVE_WORK",

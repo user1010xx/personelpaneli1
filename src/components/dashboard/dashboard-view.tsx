@@ -21,6 +21,7 @@ type Person = {
   insiyatifAdedi: number;
   geribildirimAdedi: number;
   egitimAdedi: number;
+  ornekCagriAdedi: number;
 };
 
 type LeaderEntry = {
@@ -34,6 +35,7 @@ type Leaders = {
   insiyatif: LeaderEntry[];
   geribildirim: LeaderEntry[];
   egitim: LeaderEntry[];
+  ornekCagri: LeaderEntry[];
 };
 
 type SortKey = keyof Person;
@@ -46,6 +48,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "insiyatifAdedi", label: "İnsiyatif" },
   { key: "geribildirimAdedi", label: "Geribildirim" },
   { key: "egitimAdedi", label: "Eğitim" },
+  { key: "ornekCagriAdedi", label: "Örnek Çağrı" },
 ];
 
 type DashboardApiResponse = {
@@ -232,7 +235,7 @@ export function DashboardView() {
         </p>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <MetricCard
           label="Dinlenen çağrı"
           value={totals.dinlenenCagriAdedi}
@@ -263,6 +266,12 @@ export function DashboardView() {
           hint="Alınan eğitim"
           tone="emerald"
         />
+        <MetricCard
+          label="Örnek çağrı"
+          value={totals.ornekCagriAdedi}
+          hint="Motivasyon adedi"
+          tone="slate"
+        />
       </section>
 
       <section className="data-table-wrap">
@@ -292,13 +301,13 @@ export function DashboardView() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     Seçilen aralıkta veri yok.
                   </td>
                 </tr>
@@ -311,6 +320,7 @@ export function DashboardView() {
                     <td className="tabular-nums">{person.insiyatifAdedi}</td>
                     <td className="tabular-nums">{person.geribildirimAdedi}</td>
                     <td className="tabular-nums">{person.egitimAdedi}</td>
+                    <td className="tabular-nums">{person.ornekCagriAdedi}</td>
                   </tr>
                 ))
               )}

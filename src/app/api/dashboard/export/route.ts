@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       insiyatif_calisma_adedi: p.insiyatifAdedi,
       geribildirim_adedi: p.geribildirimAdedi,
       egitim_adedi: p.egitimAdedi,
+      ornek_cagri_adedi: p.ornekCagriAdedi,
     })),
     "Personel Ozeti",
   );

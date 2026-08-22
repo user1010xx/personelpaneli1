@@ -10,6 +10,7 @@ export type DashboardSourceRows = {
   initiative: { personelName: string }[];
   training: { personelName: string; recordType: "EGITIM" | "GERIBILDIRIM" }[];
   callFeedback: { personelName: string }[];
+  exampleCalls: { personelName: string }[];
 };
 
 type MetricBucket = {
@@ -17,6 +18,7 @@ type MetricBucket = {
   insiyatif: number;
   geribildirim: number;
   egitim: number;
+  ornekCagri: number;
 };
 
 export type DashboardPerson = {
@@ -26,6 +28,7 @@ export type DashboardPerson = {
   insiyatifAdedi: number;
   geribildirimAdedi: number;
   egitimAdedi: number;
+  ornekCagriAdedi: number;
 };
 
 export type DashboardTotals = {
@@ -34,6 +37,7 @@ export type DashboardTotals = {
   insiyatifAdedi: number;
   geribildirimAdedi: number;
   egitimAdedi: number;
+  ornekCagriAdedi: number;
   personelAdedi: number;
 };
 
@@ -49,6 +53,7 @@ export type DashboardLeaders = {
   insiyatif: LeaderEntry[];
   geribildirim: LeaderEntry[];
   egitim: LeaderEntry[];
+  ornekCagri: LeaderEntry[];
 };
 
 export type DashboardResult = {
@@ -87,7 +92,7 @@ function topUniqueLeaders(
 }
 
 function emptyBucket(): MetricBucket {
-  return { scores: [], insiyatif: 0, geribildirim: 0, egitim: 0 };
+  return { scores: [], insiyatif: 0, geribildirim: 0, egitim: 0, ornekCagri: 0 };
 }
 
 function avg(values: number[]) {
@@ -103,6 +108,7 @@ function toPerson(personelName: string, data: MetricBucket): DashboardPerson {
     insiyatifAdedi: data.insiyatif,
     geribildirimAdedi: data.geribildirim,
     egitimAdedi: data.egitim,
+    ornekCagriAdedi: data.ornekCagri,
   };
 }
 
@@ -148,6 +154,12 @@ export function buildDashboardResult(
     buckets.get(key)!.geribildirim += 1;
   }
 
+  for (const row of sources.exampleCalls) {
+    const key = register(row.personelName);
+    if (!key) continue;
+    buckets.get(key)!.ornekCagri += 1;
+  }
+
   const rows: DashboardPerson[] = [];
   for (const [key, data] of buckets) {
     const personelName = displayNames.get(key) ?? key;
@@ -169,6 +181,7 @@ export function buildDashboardResult(
     insiyatifAdedi: rows.reduce((sum, row) => sum + row.insiyatifAdedi, 0),
     geribildirimAdedi: rows.reduce((sum, row) => sum + row.geribildirimAdedi, 0),
     egitimAdedi: rows.reduce((sum, row) => sum + row.egitimAdedi, 0),
+    ornekCagriAdedi: rows.reduce((sum, row) => sum + row.ornekCagriAdedi, 0),
     personelAdedi: rows.length,
   };
 
@@ -181,6 +194,7 @@ export function buildDashboardResult(
       insiyatif: topUniqueLeaders(rows, (p) => p.insiyatifAdedi, (v) => `${Math.round(v)} çalışma`),
       geribildirim: topUniqueLeaders(rows, (p) => p.geribildirimAdedi, (v) => `${Math.round(v)} geri bildirim`),
       egitim: topUniqueLeaders(rows, (p) => p.egitimAdedi, (v) => `${Math.round(v)} eğitim`),
+      ornekCagri: topUniqueLeaders(rows, (p) => p.ornekCagriAdedi, (v) => `${Math.round(v)} örnek çağrı`),
     },
     from: params.from.toISOString(),
     to: params.to.toISOString(),
@@ -198,7 +212,8 @@ export async function getDashboardData(params: {
     ? startOfDay(params.from)
     : startOfDay(new Date(to.getTime() - 18 * 86400000));
 
-  const [qualityRows, initiativeRows, trainingRows, callFeedbackRows] = await Promise.all([
+  const [qualityRows, initiativeRows, trainingRows, callFeedbackRows, exampleCallRows] =
+    await Promise.all([
     prisma.qualityScore.findMany({
       where: { recordDate: { gte: from, lte: to } },
       select: { personelName: true, score: true },
@@ -223,6 +238,12 @@ export async function getDashboardData(params: {
       take: DASHBOARD_ROW_LIMIT,
       orderBy: [{ recordDate: "desc" }],
     }),
+    prisma.exampleCall.findMany({
+      where: { recordDate: { gte: from, lte: to } },
+      select: { personelName: true },
+      take: DASHBOARD_ROW_LIMIT,
+      orderBy: [{ recordDate: "desc" }],
+    }),
   ]);
 
   return buildDashboardResult(
@@ -231,6 +252,7 @@ export async function getDashboardData(params: {
       initiative: initiativeRows,
       training: trainingRows,
       callFeedback: callFeedbackRows,
+      exampleCalls: exampleCallRows,
     },
     {
       from,
@@ -240,7 +262,8 @@ export async function getDashboardData(params: {
         qualityRows.length >= DASHBOARD_ROW_LIMIT ||
         initiativeRows.length >= DASHBOARD_ROW_LIMIT ||
         trainingRows.length >= DASHBOARD_ROW_LIMIT ||
-        callFeedbackRows.length >= DASHBOARD_ROW_LIMIT,
+        callFeedbackRows.length >= DASHBOARD_ROW_LIMIT ||
+        exampleCallRows.length >= DASHBOARD_ROW_LIMIT,
     },
   );
 }
@@ -252,6 +275,7 @@ export function emptyDashboardTotals(): DashboardTotals {
     insiyatifAdedi: 0,
     geribildirimAdedi: 0,
     egitimAdedi: 0,
+    ornekCagriAdedi: 0,
     personelAdedi: 0,
   };
 }

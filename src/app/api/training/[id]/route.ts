@@ -9,6 +9,7 @@ import { timeStringSchema } from "@/lib/validation";
 const updateSchema = z
   .object({
     personelName: z.string().trim().min(2).optional(),
+    recordType: z.enum(["EGITIM", "GERIBILDIRIM"]).optional(),
     recordDate: z.string().optional(),
     startTime: timeStringSchema.optional(),
     endTime: timeStringSchema.optional(),
@@ -73,6 +74,7 @@ export async function PATCH(
       where: { id },
       data: {
         ...(body.personelName ? { personelName: body.personelName } : {}),
+        ...(body.recordType ? { recordType: body.recordType } : {}),
         ...(recordDate ? { recordDate } : {}),
         ...(body.startTime ? { startTime: body.startTime } : {}),
         ...(body.endTime ? { endTime: body.endTime } : {}),
@@ -80,13 +82,20 @@ export async function PATCH(
         ...(body.trainer ? { trainer: body.trainer } : {}),
       },
     });
+    const typeLabel = row.recordType === "GERIBILDIRIM" ? "Geribildirim" : "Eğitim";
     logActivity(
       auth.user!,
       "EGITIM_GUNCELLE",
-      `Eğitim kaydını güncelledi: ${row.personelName} — ${row.topic}.`,
+      `${typeLabel} kaydını güncelledi: ${row.personelName} — ${row.topic}.`,
       {
         moduleKey: "EGITIM",
-        metadata: { recordId: row.id, personelName: row.personelName, topic: row.topic, trainer: row.trainer },
+        metadata: {
+          recordId: row.id,
+          personelName: row.personelName,
+          recordType: row.recordType,
+          topic: row.topic,
+          trainer: row.trainer,
+        },
       },
     );
     return NextResponse.json({ row });

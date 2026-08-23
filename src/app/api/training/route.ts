@@ -127,10 +127,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
     }
 
+    const recordType = body.recordType ?? "EGITIM";
+    const typeLabel = recordType === "GERIBILDIRIM" ? "Geribildirim" : "Eğitim";
     const row = await prisma.trainingFeedback.create({
       data: {
         personelName: body.personelName,
-        recordType: "EGITIM",
+        recordType,
         recordDate,
         startTime: body.startTime,
         endTime: body.endTime,
@@ -142,12 +144,13 @@ export async function POST(request: Request) {
     logActivity(
       auth.user!,
       "EGITIM_EKLE",
-      `Eğitim kaydı oluşturdu: ${body.personelName} — ${body.topic} (${body.recordDate}, ${body.startTime}-${body.endTime}).`,
+      `${typeLabel} kaydı oluşturdu: ${body.personelName} — ${body.topic} (${body.recordDate}, ${body.startTime}-${body.endTime}).`,
       {
         moduleKey: "EGITIM",
         metadata: {
           recordId: row.id,
           personelName: row.personelName,
+          recordType,
           topic: row.topic,
           trainer: row.trainer,
           recordDate: body.recordDate,

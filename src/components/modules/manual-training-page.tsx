@@ -264,6 +264,14 @@ export function ManualTrainingPage({
         kicker={kicker}
         title={title}
         description={description}
+        toolbar={
+          <DateRangePicker
+            value={range}
+            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+          />
+        }
         actions={
         <div className="flex flex-wrap items-center gap-2">
           <div ref={formAnchorRef} className="relative">
@@ -290,7 +298,11 @@ export function ManualTrainingPage({
                       <h2 className="text-base font-semibold text-slate-900">
                         {editingId ? "Kaydı Düzenle" : "Yeni Kayıt"}
                       </h2>
-                      <p className="mt-0.5 text-xs text-slate-500">Bilgileri girin ve kaydedin</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {lockRecordType
+                          ? "Bilgileri girin ve kaydedin"
+                          : "Önce Eğitim veya Geribildirim seçin, ardından bilgileri girin"}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -304,7 +316,7 @@ export function ManualTrainingPage({
 
                   <div className="space-y-3">
                     {lockRecordType ? null : (
-                      <Field label="Kayıt Türü">
+                      <Field label="Alan">
                         <select
                           value={form.recordType}
                           onChange={(e) =>
@@ -313,7 +325,7 @@ export function ManualTrainingPage({
                           className="panel-input"
                           required
                         >
-                          <option value="EGITIM">{primaryTypeLabel}</option>
+                          <option value="EGITIM">Eğitim</option>
                           <option value="GERIBILDIRIM">Geribildirim</option>
                         </select>
                       </Field>
@@ -359,7 +371,15 @@ export function ManualTrainingPage({
                         required
                       />
                     </Field>
-                    <Field label={trainerLabel}>
+                    <Field
+                      label={
+                        lockRecordType
+                          ? trainerLabel
+                          : form.recordType === "GERIBILDIRIM"
+                            ? "Geribildirimi Veren"
+                            : "Eğitimi Veren"
+                      }
+                    >
                       <Input
                         value={form.trainer}
                         onChange={(e) => setForm({ ...form, trainer: e.target.value })}
@@ -472,17 +492,10 @@ export function ManualTrainingPage({
           title="Personel Özeti"
           description="Tarih aralığına göre personel bazında eğitim ve geribildirim adetleri"
         />
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-slate-100 px-5 py-4">
           <p className="text-sm text-slate-500">
             Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
           </p>
-          <DateRangePicker
-            value={range}
-            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
-            onRefresh={() => void reload({ silent: true, force: true })}
-            refreshing={refreshing}
-            align="end"
-          />
         </div>
         <div className="p-5">
           {showSkeleton ? (

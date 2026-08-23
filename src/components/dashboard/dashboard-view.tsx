@@ -157,25 +157,24 @@ export function DashboardView() {
         kicker="Genel"
         title="Dashboard"
         description="Personel bazında dinlenen çağrı, puan, insiyatif, eğitim, geribildirim ve bilgi duellosu özeti."
-      />
-
-      <section className="panel-card p-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
-              Dönem seçimi
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Şu an: <span className="font-semibold text-brand-800">{effectivePeriodLabel}</span>
-            </p>
-          </div>
+        toolbar={
           <DateRangePicker
             value={range}
             onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
             onRefresh={() => void reload({ silent: true, force: true })}
             refreshing={refreshing}
-            align="end"
           />
+        }
+      />
+
+      <section className="panel-card p-5 sm:p-6">
+        <div className="mb-4">
+          <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+            Dönem seçimi
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Şu an: <span className="font-semibold text-brand-800">{effectivePeriodLabel}</span>
+          </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <label className="block">

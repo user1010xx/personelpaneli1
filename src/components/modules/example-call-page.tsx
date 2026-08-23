@@ -242,6 +242,14 @@ export function ExampleCallPage() {
         kicker="Operasyon"
         title="Örnek Çağrı ve Motivasyon"
         description="Personel bazında iletilen örnek çağrı ve motivasyon adetleri."
+        toolbar={
+          <DateRangePicker
+            value={range}
+            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+          />
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div ref={formAnchorRef} className="relative">
@@ -428,19 +436,8 @@ export function ExampleCallPage() {
             </>
           }
         />
-        <div className="flex flex-wrap items-end gap-4 px-5 py-4">
-          <div>
-            <span className="filter-label">Tarih</span>
-            <div className="mt-1.5">
-              <DateRangePicker
-                value={range}
-                onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
-                onRefresh={() => void reload({ silent: true, force: true })}
-                refreshing={refreshing}
-              />
-            </div>
-          </div>
-          <label className="block min-w-[220px] flex-1">
+        <div className="px-5 py-4">
+          <label className="block max-w-md">
             <span className="filter-label">Arama</span>
             <Input
               placeholder="Personel veya numara"

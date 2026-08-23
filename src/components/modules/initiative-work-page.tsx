@@ -242,6 +242,14 @@ export function InitiativeWorkPage() {
         kicker="Operasyon"
         title="İnsiyatif Çalışma"
         description="Kendi insiyatifiyle alınan çağrıların kaydı, özet kartları ve geçmişi."
+        toolbar={
+          <DateRangePicker
+            value={range}
+            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+          />
+        }
         actions={
         <div className="flex flex-wrap items-center gap-2">
           <div ref={formAnchorRef} className="relative">
@@ -396,17 +404,6 @@ export function InitiativeWorkPage() {
           }
         />
         <div className="flex flex-wrap items-end gap-4 border-b border-slate-100 px-5 py-4">
-          <div>
-            <span className="filter-label">Tarih</span>
-            <div className="mt-1.5">
-              <DateRangePicker
-                value={range}
-                onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
-                onRefresh={() => void reload({ silent: true, force: true })}
-                refreshing={refreshing}
-              />
-            </div>
-          </div>
           <label className="block min-w-[200px] flex-1">
             <span className="filter-label">Arama</span>
             <Input

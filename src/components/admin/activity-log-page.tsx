@@ -11,11 +11,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import {
-  dateRangePeriodLabel,
-  resolveDateRange,
-  type DateRangeValue,
-} from "@/lib/date-range-filter";
+import { resolveDateRange, type DateRangeValue } from "@/lib/date-range-filter";
 import { cn } from "@/lib/utils";
 
 type LogRow = {
@@ -76,24 +72,20 @@ export function ActivityLogPage() {
         kicker="Sistem"
         title="LOG"
         description="Tüm admin ve kullanıcı işlemleri — kim, ne zaman, ne yaptı."
+        toolbar={
+          <DateRangePicker
+            value={range}
+            onChange={(next) => {
+              setRange(next);
+              setPage(1);
+            }}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+          />
+        }
       />
 
       <div className="filter-toolbar lg:items-center">
-        <div>
-          <span className="filter-label">Tarih</span>
-          <div className="mt-1.5">
-            <DateRangePicker
-              value={range}
-              onChange={(next) => {
-                setRange(next);
-                setPage(1);
-              }}
-              onRefresh={() => void reload({ silent: true, force: true })}
-              refreshing={refreshing}
-            />
-          </div>
-          <p className="mt-1.5 text-xs text-slate-500">{dateRangePeriodLabel(range)}</p>
-        </div>
         <div className="filter-field min-w-[240px] flex-[2]">
           <span className="filter-label">Arama</span>
           <div className="relative">

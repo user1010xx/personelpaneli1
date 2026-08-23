@@ -47,14 +47,29 @@ export function formatPanelActivityMessage(input: {
       islem = `${personel || "Personel"} çağrı denetlemesi silindi`;
       note = joinNote([personel, score ? `${score} Puan` : null]);
       break;
-    case "EGITIM_EKLE":
-      islem = `${personel || "Personel"} eğitim kaydı eklendi`;
-      note = joinNote([personel, topic, trainer, str(meta, "recordDate")]);
+    case "EGITIM_EKLE": {
+      const alan = str(meta, "recordType") === "GERIBILDIRIM" ? "geribildirim" : "eğitim";
+      islem = `${personel || "Personel"} ${alan} kaydı eklendi`;
+      note = joinNote([
+        personel,
+        str(meta, "recordType") === "GERIBILDIRIM" ? "Geribildirim" : "Eğitim",
+        topic,
+        trainer,
+        str(meta, "recordDate"),
+      ]);
       break;
-    case "EGITIM_GUNCELLE":
-      islem = `${personel || "Personel"} eğitim kaydı güncellendi`;
-      note = joinNote([personel, topic, trainer]);
+    }
+    case "EGITIM_GUNCELLE": {
+      const alan = str(meta, "recordType") === "GERIBILDIRIM" ? "geribildirim" : "eğitim";
+      islem = `${personel || "Personel"} ${alan} kaydı güncellendi`;
+      note = joinNote([
+        personel,
+        str(meta, "recordType") === "GERIBILDIRIM" ? "Geribildirim" : "Eğitim",
+        topic,
+        trainer,
+      ]);
       break;
+    }
     case "CAGRI_GERIBILDIRIM_EKLE":
       islem = `${personel || "Personel"} çağrı geribildirimi eklendi`;
       note = joinNote([personel, topic, trainer, str(meta, "recordDate")]);

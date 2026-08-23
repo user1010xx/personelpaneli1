@@ -231,6 +231,14 @@ export function ManualQualityPage() {
         kicker="Operasyon"
         title="Çağrı Denetleme"
         description="Dinlenen çağrıları puanlayın, not alın ve personel bazında geçmişi görün."
+        toolbar={
+          <DateRangePicker
+            value={range}
+            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+          />
+        }
         actions={
         <div className="flex flex-wrap items-center gap-2">
           <div ref={formAnchorRef} className="relative">
@@ -406,17 +414,10 @@ export function ManualQualityPage() {
           title="Personel Özeti"
           description="Tarih aralığına göre personel bazında adet ve ortalama puan"
         />
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-slate-100 px-5 py-4">
           <p className="text-sm text-slate-500">
             Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
           </p>
-          <DateRangePicker
-            value={range}
-            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
-            onRefresh={() => void reload({ silent: true, force: true })}
-            refreshing={refreshing}
-            align="end"
-          />
         </div>
         <div className="p-5">
           {showSkeleton ? (

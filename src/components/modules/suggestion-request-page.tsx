@@ -127,6 +127,14 @@ export function SuggestionRequestPage() {
         kicker="Genel"
         title="Öneri - Talep"
         description="Tüm kullanıcılar öneri veya talep ekleyebilir; düzenleme ve silme yalnızca ekleyen kişi veya admin tarafından yapılır."
+        toolbar={
+          <DateRangePicker
+            value={range}
+            onChange={setRange}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+          />
+        }
       />
 
       {message ? (
@@ -200,22 +208,13 @@ export function SuggestionRequestPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <div className="panel-card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-            <div>
-              <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
-                Bildirimler
-              </h2>
-              <p className="text-xs text-slate-500">
-                {refreshing ? "Güncelleniyor..." : `${rows.length} kayıt · ${dateRangePeriodLabel(range)}`}
-              </p>
-            </div>
-            <DateRangePicker
-              value={range}
-              onChange={setRange}
-              onRefresh={() => void reload({ silent: true, force: true })}
-              refreshing={refreshing}
-              align="end"
-            />
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+              Bildirimler
+            </h2>
+            <p className="text-xs text-slate-500">
+              {refreshing ? "Güncelleniyor..." : `${rows.length} kayıt · ${dateRangePeriodLabel(range)}`}
+            </p>
           </div>
           <div className="divide-y divide-slate-100">
             {showSkeleton ? (

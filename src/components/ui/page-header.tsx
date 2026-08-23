@@ -4,17 +4,20 @@ type Props = {
   kicker?: string;
   title: string;
   description?: string;
+  toolbar?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 };
 
-export function PageHeader({ kicker, title, description, actions, className }: Props) {
+export function PageHeader({ kicker, title, description, toolbar, actions, className }: Props) {
   return (
     <header className={cn(className)}>
       {kicker ? <p className="kicker text-brand-700">{kicker}</p> : null}
       <div
         className={cn(
-          "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+          "flex flex-col gap-4",
+          (toolbar || actions) &&
+            "lg:grid lg:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1fr)] lg:items-end",
           kicker && "mt-2",
         )}
       >
@@ -26,8 +29,21 @@ export function PageHeader({ kicker, title, description, actions, className }: P
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
           ) : null}
         </div>
-        {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+        {toolbar || actions ? (
+          <>
+            {toolbar ? (
+              <div className="flex items-center justify-start lg:justify-center">{toolbar}</div>
+            ) : (
+              <div className="hidden lg:block" />
+            )}
+            {actions ? (
+              <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+                {actions}
+              </div>
+            ) : (
+              <div className="hidden lg:block" />
+            )}
+          </>
         ) : null}
       </div>
       <div className="mt-6 h-px w-full bg-gradient-to-r from-brand-500/55 via-[var(--border)] to-transparent" />

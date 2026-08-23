@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import {
   DATE_RANGE_PRESETS,
@@ -142,7 +143,7 @@ export function DateRangePicker({
   onChange,
   onRefresh,
   refreshing,
-  align = "start",
+  align = "end",
   className,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -151,14 +152,14 @@ export function DateRangePicker({
   const [draftTo, setDraftTo] = useState<string | null>(value.preset === "custom" ? value.to : null);
   const [hoverDay, setHoverDay] = useState<string | null>(null);
   const [leftMonth, setLeftMonth] = useState(() => startOfMonth(parseIsoDay(value.from) ?? new Date()));
-  const [rightMonth, setRightMonth] = useState(() => {
-    const end = parseIsoDay(value.to) ?? new Date();
-    const start = parseIsoDay(value.from) ?? end;
-    const next = startOfMonth(end);
-    if (next.getTime() === startOfMonth(start).getTime()) return next;
-    return next;
-  });
+  const [rightMonth, setRightMonth] = useState(() => startOfMonth(parseIsoDay(value.to) ?? new Date()));
+  const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -169,21 +170,58 @@ export function DateRangePicker({
     }
   }, [open, value.from, value.preset, value.to]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function place() {
+      const trigger = rootRef.current;
+      const menu = menuRef.current;
+      if (!trigger || !menu) return;
+      const rect = trigger.getBoundingClientRect();
+      const menuWidth = menu.offsetWidth || 240;
+      const menuHeight = menu.offsetHeight || 280;
+      const gap = 8;
+      let top = rect.bottom + gap;
+      let left = align === "end" ? rect.right - menuWidth : rect.left;
+      left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+      if (top + menuHeight > window.innerHeight - 8 && rect.top - gap - menuHeight > 8) {
+        top = rect.top - menuHeight - gap;
+      }
+      menu.style.top = `${top}px`;
+      menu.style.left = `${left}px`;
+    }
+
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [align, open, showCalendars]);
+
   useEffect(() => {
     if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    function onClick(event: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+    let remove: (() => void) | undefined;
+    const timer = window.setTimeout(() => {
+      function onPointerDown(event: PointerEvent) {
+        const target = event.target as Node;
+        if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
         setOpen(false);
       }
-    }
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onClick);
+      function onKey(event: KeyboardEvent) {
+        if (event.key === "Escape") setOpen(false);
+      }
+      document.addEventListener("pointerdown", onPointerDown);
+      document.addEventListener("keydown", onKey);
+      remove = () => {
+        document.removeEventListener("pointerdown", onPointerDown);
+        document.removeEventListener("keydown", onKey);
+      };
+    }, 0);
     return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onClick);
+      window.clearTimeout(timer);
+      remove?.();
     };
   }, [open]);
 
@@ -214,39 +252,11 @@ export function DateRangePicker({
 
   const label = dateRangeButtonLabel(value);
 
-  return (
-    <div ref={rootRef} className={cn("relative inline-flex items-center gap-2", className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className={cn(
-          "inline-flex h-10 items-center gap-2 rounded-xl border bg-white px-3.5 text-sm font-medium text-slate-800 shadow-sm transition",
-          open
-            ? "border-slate-900 ring-1 ring-slate-900"
-            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
-        )}
-      >
-        <CalendarDays className="h-4 w-4 text-slate-500" />
-        {label}
-      </button>
-
-      {onRefresh ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
-          aria-label="Yenile"
-        >
-          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-        </button>
-      ) : null}
-
-      {open ? (
+  const menu = open && mounted
+    ? createPortal(
         <div
-          className={cn(
-            "absolute top-full z-50 mt-2 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel-lg md:flex-row",
-            align === "end" ? "right-0" : "left-0",
-          )}
+          ref={menuRef}
+          className="fixed z-[80] flex max-h-[min(90vh,44rem)] flex-col overflow-auto rounded-2xl border border-slate-200 bg-white shadow-panel-lg md:flex-row"
         >
           {showCalendars ? (
             <div className="flex flex-col gap-6 border-b border-slate-100 p-4 md:flex-row md:border-b-0 md:border-r">
@@ -300,8 +310,41 @@ export function DateRangePicker({
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <div ref={rootRef} className={cn("relative inline-flex items-center gap-2", className)}>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          "inline-flex h-10 items-center gap-2 rounded-xl border bg-white px-3.5 text-sm font-medium text-slate-800 shadow-sm transition",
+          open
+            ? "border-slate-900 ring-1 ring-slate-900"
+            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+        )}
+      >
+        <CalendarDays className="h-4 w-4 text-slate-500" />
+        {label}
+      </button>
+
+      {onRefresh ? (
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
+          aria-label="Yenile"
+        >
+          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+        </button>
       ) : null}
+
+      {menu}
     </div>
   );
 }

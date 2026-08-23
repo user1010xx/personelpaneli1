@@ -1,4 +1,5 @@
 import { endOfDay, startOfDay } from "date-fns";
+import { formatAppDate, formatAppDateTime } from "@/lib/timezone";
 
 const TR_DATE = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/;
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -65,22 +66,11 @@ export function parseTelegramDateRange(raw: string): { from: Date; to: Date } | 
 }
 
 export function formatTelegramDay(date: Date) {
-  return date.toLocaleDateString("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatAppDate(date);
 }
 
 export function formatTelegramDateTime(date: Date) {
-  const day = formatTelegramDay(date);
-  const time = date.toLocaleTimeString("tr-TR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-  return `${day} - ${time}`;
+  return formatAppDateTime(date);
 }
 
 export function formatRangeLabel(from: Date, to: Date) {

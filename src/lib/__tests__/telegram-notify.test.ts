@@ -5,7 +5,7 @@ describe("telegram activity format", () => {
   it("formats quality score add like the panel notice", () => {
     const text = formatPanelActivityMessage({
       userName: "Ahmet",
-      at: new Date(2026, 7, 22, 17, 31, 22),
+      at: new Date("2026-08-22T14:31:22.000Z"),
       action: "CAGRI_DENETLEME_EKLE",
       description: "Çağrı denetlemesi ekledi",
       metadata: {

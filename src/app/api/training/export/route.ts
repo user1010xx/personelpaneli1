@@ -4,6 +4,7 @@ import { rowsToWorkbook } from "@/lib/excel-export";
 import { TRAINING_RECORD_LABELS, trainingDateRange } from "@/lib/training";
 import { parseDate, requireApiUser } from "@/lib/api-helpers";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
+import { formatAppDateTime } from "@/lib/timezone";
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
 
   const buffer = await rowsToWorkbook(
     rows.map((r) => ({
-      olusturulma_tarihi: r.createdAt.toLocaleString("tr-TR"),
+      olusturulma_tarihi: formatAppDateTime(r.createdAt),
       personel_adi: r.personelName,
       tur: TRAINING_RECORD_LABELS[r.recordType],
       is_tarihi: r.recordDate.toISOString().slice(0, 10),

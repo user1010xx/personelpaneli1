@@ -4,6 +4,7 @@ import { parseDate, requireApiUser } from "@/lib/api-helpers";
 import { EXAMPLE_CALL_TYPE_LABELS, exampleCallDateRange } from "@/lib/example-call";
 import { rowsToWorkbook } from "@/lib/excel-export";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
+import { formatAppDateTime } from "@/lib/timezone";
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
   const buffer = await rowsToWorkbook(
     rows.map((row) => ({
-      olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+      olusturulma_tarihi: formatAppDateTime(row.createdAt),
       tur: EXAMPLE_CALL_TYPE_LABELS[row.recordType],
       personel_adi: row.personelName,
       numara: row.recordType === "ORNEK_CAGRI" ? row.phone : "",

@@ -2,6 +2,7 @@ import type { Role } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { notifyPanelActivity } from "@/lib/telegram/notify";
+import { formatAppDateTime } from "@/lib/timezone";
 
 export type ActivityUser = {
   id: string;
@@ -66,13 +67,5 @@ export function logActivity(
 }
 
 export function formatLogTimestamp(date: Date | string) {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleString("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  return formatAppDateTime(date);
 }

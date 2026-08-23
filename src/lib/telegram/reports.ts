@@ -7,6 +7,7 @@ import { qualityDateRange } from "@/lib/quality";
 import { TRAINING_RECORD_LABELS, trainingDateRange } from "@/lib/training";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
 import { formatRangeLabel } from "@/lib/telegram/dates";
+import { formatAppDateTime } from "@/lib/timezone";
 
 export type ReportCommand =
   | "genel"
@@ -49,7 +50,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     });
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
-        tarih_saat: row.createdAt.toLocaleString("tr-TR"),
+        tarih_saat: formatAppDateTime(row.createdAt),
         kullanici: row.userName,
         eposta: row.userEmail,
         rol: roleLabel(row.userRole),
@@ -69,7 +70,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     });
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
-        olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        olusturulma_tarihi: formatAppDateTime(row.createdAt),
         tur: row.type === "TALEP" ? "Talep" : "Oneri",
         ileten: row.reporterName,
         konu: row.subject,
@@ -88,7 +89,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     });
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
-        olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        olusturulma_tarihi: formatAppDateTime(row.createdAt),
         personel_adi: row.personelName,
         tur: TRAINING_RECORD_LABELS[row.recordType],
         is_tarihi: row.recordDate.toISOString().slice(0, 10),
@@ -110,7 +111,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     });
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
-        olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        olusturulma_tarihi: formatAppDateTime(row.createdAt),
         personel_adi: row.personelName,
         tur: row.recordType === "EGITIM" ? "Cagri" : TRAINING_RECORD_LABELS[row.recordType],
         is_tarihi: row.recordDate.toISOString().slice(0, 10),
@@ -132,7 +133,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     });
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
-        olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        olusturulma_tarihi: formatAppDateTime(row.createdAt),
         personel_adi: row.personelName,
         telefon: row.phone,
         puan: row.score,
@@ -152,7 +153,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
     });
     const buffer = await rowsToWorkbook(
       rows.map((row) => ({
-        olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+        olusturulma_tarihi: formatAppDateTime(row.createdAt),
         tur: EXAMPLE_CALL_TYPE_LABELS[row.recordType],
         personel_adi: row.personelName,
         numara: row.recordType === "ORNEK_CAGRI" ? row.phone : "",
@@ -170,7 +171,7 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
   });
   const buffer = await rowsToWorkbook(
     rows.map((row) => ({
-      olusturulma_tarihi: row.createdAt.toLocaleString("tr-TR"),
+      olusturulma_tarihi: formatAppDateTime(row.createdAt),
       personel_adi: row.personelName,
       is_tarihi: row.recordDate.toISOString().slice(0, 10),
       arama_adedi: row.callCount,

@@ -5,11 +5,14 @@ import { Menu } from "lucide-react";
 import type { SessionUser } from "@/types/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { usePanelRevisionSync } from "@/hooks/use-panel-revision-sync";
+import { useIdleLogout } from "@/hooks/use-idle-logout";
+import { formatAppDateTimeShort } from "@/lib/timezone";
 
 export function PanelShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   usePanelRevisionSync();
+  useIdleLogout();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
@@ -73,13 +76,7 @@ export function PanelShell({ user, children }: { user: SessionUser; children: Re
             </div>
             <div className="hidden items-center gap-2 font-mono text-[11px] text-slate-500 sm:flex">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-              {now.toLocaleString("tr-TR", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatAppDateTimeShort(now)}
             </div>
           </div>
         </header>

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { jsonResponse, requireApiUserFromDb } from "@/lib/api-helpers";
+import { jsonResponse, parseDate, requireApiUserFromDb } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
+import { endOfDay, startOfDay } from "date-fns";
 
 const createSchema = z.object({
   type: z.enum(["TALEP", "ONERI"]),
@@ -11,12 +12,25 @@ const createSchema = z.object({
   content: z.string().trim().min(3, "İçerik gerekli").max(4000),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireApiUserFromDb();
   if (auth.error) return auth.error;
 
+  const { searchParams } = new URL(request.url);
+  const from = parseDate(searchParams.get("from"));
+  const to = parseDate(searchParams.get("to"));
+
   const MAX_ROWS = 5_000;
   const rows = await prisma.suggestionRequest.findMany({
+    where:
+      from || to
+        ? {
+            createdAt: {
+              ...(from ? { gte: startOfDay(from) } : {}),
+              ...(to ? { lte: endOfDay(to) } : {}),
+            },
+          }
+        : undefined,
     orderBy: { createdAt: "desc" },
     take: MAX_ROWS,
     include: { createdBy: { select: { id: true, name: true } } },

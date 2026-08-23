@@ -24,6 +24,8 @@ export async function GET(request: Request) {
       egitim_adedi: p.egitimAdedi,
       ornek_cagri_adedi: p.ornekCagriAdedi,
       motivasyon_adedi: p.motivasyonAdedi,
+      bilgi_duellosu_dogru: p.bilgiDuellosuDogruAdedi,
+      bilgi_duellosu_yanlis: p.bilgiDuellosuYanlisAdedi,
     })),
     "Personel Ozeti",
   );

@@ -12,6 +12,7 @@ import {
   ScrollText,
   Shield,
   Sparkles,
+  Swords,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,12 +28,13 @@ const iconMap = {
   shield: Shield,
   "scroll-text": ScrollText,
   sparkles: Sparkles,
+  swords: Swords,
   briefcase: BriefcaseBusiness,
 } as const;
 
 const NAV_GROUPS: { label: string; keys: string[] }[] = [
   { label: "Genel", keys: ["DASHBOARD", "SUGGESTION_REQUEST"] },
-  { label: "Operasyon", keys: ["EGITIM", "CALL_FEEDBACK", "KALITE", "EXAMPLE_CALL", "INITIATIVE_WORK"] },
+  { label: "Operasyon", keys: ["EGITIM", "CALL_FEEDBACK", "KALITE", "EXAMPLE_CALL", "KNOWLEDGE_DUEL", "INITIATIVE_WORK"] },
   { label: "Sistem", keys: ["USERS", "LOG"] },
 ];
 

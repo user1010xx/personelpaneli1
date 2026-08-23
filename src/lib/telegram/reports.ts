@@ -3,6 +3,7 @@ import { moduleTitle, roleLabel } from "@/lib/activity-log";
 import { rowsToWorkbook } from "@/lib/excel-export";
 import { formatWorkDuration, initiativeWorkDateRange } from "@/lib/initiative-work";
 import { EXAMPLE_CALL_TYPE_LABELS, exampleCallDateRange } from "@/lib/example-call";
+import { KNOWLEDGE_DUEL_RESULT_LABELS, knowledgeDuelDateRange } from "@/lib/knowledge-duel";
 import { qualityDateRange } from "@/lib/quality";
 import { TRAINING_RECORD_LABELS, trainingDateRange } from "@/lib/training";
 import { EXPORT_ROW_LIMIT } from "@/lib/validation";
@@ -16,6 +17,7 @@ export type ReportCommand =
   | "cagrigeribildirim"
   | "cagridenetleme"
   | "ornekcagri"
+  | "bilgiduellosu"
   | "insiyatif";
 
 export const REPORT_COMMANDS: Record<
@@ -28,6 +30,7 @@ export const REPORT_COMMANDS: Record<
   cagrigeribildirim: { title: "Çağrı Geribildirim", filename: "cagri-geribildirim" },
   cagridenetleme: { title: "Çağrı Denetleme", filename: "cagri-denetleme" },
   ornekcagri: { title: "Örnek Çağrı ve Motivasyon", filename: "ornek-cagri" },
+  bilgiduellosu: { title: "Bilgi Duellosu", filename: "bilgi-duellosu" },
   insiyatif: { title: "İnsiyatif Çalışma", filename: "insiyatif" },
 };
 
@@ -160,6 +163,24 @@ export async function buildTelegramReport(command: ReportCommand, from: Date, to
         is_tarihi: row.recordDate.toISOString().slice(0, 10),
       })),
       "Ornek Cagri",
+    );
+    return { buffer, filename, count: rows.length, title: meta.title, label };
+  }
+
+  if (command === "bilgiduellosu") {
+    const rows = await prisma.knowledgeDuel.findMany({
+      where: { recordDate: knowledgeDuelDateRange(from, to) },
+      orderBy: [{ recordDate: "desc" }, { createdAt: "desc" }],
+      take: EXPORT_ROW_LIMIT,
+    });
+    const buffer = await rowsToWorkbook(
+      rows.map((row) => ({
+        olusturulma_tarihi: formatAppDateTime(row.createdAt),
+        personel_adi: row.personelName,
+        sonuc: KNOWLEDGE_DUEL_RESULT_LABELS[row.result],
+        is_tarihi: row.recordDate.toISOString().slice(0, 10),
+      })),
+      "Bilgi Duellosu",
     );
     return { buffer, filename, count: rows.length, title: meta.title, label };
   }

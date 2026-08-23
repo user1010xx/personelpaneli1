@@ -6,4 +6,9 @@ describe("telegram report commands", () => {
     expect(resolveTelegramReportCommand("ornek")).toBe("ornekcagri");
     expect(resolveTelegramReportCommand("ornekcagri")).toBe("ornekcagri");
   });
+
+  it("maps /bilgiduellosu to knowledge duel reports", () => {
+    expect(resolveTelegramReportCommand("bilgiduellosu")).toBe("bilgiduellosu");
+    expect(resolveTelegramReportCommand("bilgi-duellosu")).toBe("bilgiduellosu");
+  });
 });

@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowDownAZ, ArrowUpAZ, Search } from "lucide-react";
-import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Input } from "@/components/ui/input";
 
 type SortOption = { value: string; label: string };
@@ -9,29 +8,21 @@ type SortOption = { value: string; label: string };
 type Props = {
   search: string;
   onSearchChange: (value: string) => void;
-  month: number;
-  year: number;
-  onMonthYearChange: (month: number, year: number) => void;
   sortBy: string;
   sortDir: "asc" | "desc";
   onSortByChange: (value: string) => void;
   onSortDirChange: (value: "asc" | "desc") => void;
   sortOptions?: SortOption[];
-  hideDateRange?: boolean;
 };
 
 export function DataFilters({
   search,
   onSearchChange,
-  month,
-  year,
-  onMonthYearChange,
   sortBy,
   sortDir,
   onSortByChange,
   onSortDirChange,
   sortOptions,
-  hideDateRange = false,
 }: Props) {
   const sortChoices = sortOptions ?? [
     { value: "date", label: "Tarihe göre" },
@@ -39,17 +30,6 @@ export function DataFilters({
   ];
   return (
     <div className="filter-toolbar">
-      {!hideDateRange ? (
-        <div className="filter-field min-w-[220px]">
-          <MonthYearPicker
-            month={month}
-            year={year}
-            onChange={onMonthYearChange}
-            compact
-          />
-        </div>
-      ) : null}
-
       <div className="filter-field min-w-[200px] flex-[2]">
         <span className="filter-label">Arama</span>
         <div className="relative">

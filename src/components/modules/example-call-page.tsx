@@ -2,9 +2,13 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Pencil, Plus, Trash2, X } from "lucide-react";
-import { MonthYearPicker } from "@/components/ui/month-year-picker";
-import { useMonthYearRange } from "@/hooks/use-month-year-range";
-import { currentMonthYear } from "@/lib/month-year";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  dateRangeFilterPatch,
+  dateRangePeriodLabel,
+  resolveDateRangeFromFilters,
+  type DateRangePreset,
+} from "@/lib/date-range-filter";
 import type { Period } from "@/lib/date-ranges";
 import { PERIOD_LABELS } from "@/lib/date-ranges";
 import { Button } from "@/components/ui/button";
@@ -72,21 +76,10 @@ function formatDateTime(iso: string) {
   });
 }
 
-function periodLabelFromRange(from: string, to: string, fallback: string) {
-  if (from && to) {
-    return `${new Date(from).toLocaleDateString("tr-TR")} - ${new Date(to).toLocaleDateString("tr-TR")}`;
-  }
-  if (from) return `${new Date(from).toLocaleDateString("tr-TR")} -`;
-  if (to) return `- ${new Date(to).toLocaleDateString("tr-TR")}`;
-  return fallback;
-}
-
 export function ExampleCallPage() {
-  const defaultPeriod = currentMonthYear();
   const [filters, setFilters] = usePersistedPageState("ornek-cagri", {
     search: "",
-    month: defaultPeriod.month,
-    year: defaultPeriod.year,
+    datePreset: "today" as DateRangePreset,
     customFrom: "",
     customTo: "",
     sortDir: "desc" as "asc" | "desc",
@@ -94,22 +87,18 @@ export function ExampleCallPage() {
   });
   const patchFilters = (patch: Partial<typeof filters>) =>
     setFilters((current) => ({ ...current, ...patch }));
-  const { month, year, from, to, periodLabel, setMonthYear } = useMonthYearRange(
-    filters,
-    patchFilters,
+  const range = useMemo(
+    () =>
+      resolveDateRangeFromFilters({
+        datePreset: filters.datePreset,
+        customFrom: filters.customFrom,
+        customTo: filters.customTo,
+      }),
+    [filters.datePreset, filters.customFrom, filters.customTo],
   );
-  const effectiveFrom = filters.customFrom || from;
-  const effectiveTo = filters.customTo || to;
-  const hasCustomRange = Boolean(filters.customFrom || filters.customTo);
-  const effectivePeriodLabel = periodLabelFromRange(
-    filters.customFrom,
-    filters.customTo,
-    periodLabel,
-  );
-  const setMonthYearAndClearRange = (nextMonth: number, nextYear: number) => {
-    setMonthYear(nextMonth, nextYear);
-    patchFilters({ customFrom: "", customTo: "" });
-  };
+  const effectiveFrom = range.from;
+  const effectiveTo = range.to;
+  const effectivePeriodLabel = dateRangePeriodLabel(range);
 
   const params = useMemo(() => {
     const p = new URLSearchParams({
@@ -121,7 +110,7 @@ export function ExampleCallPage() {
     return p;
   }, [effectiveFrom, effectiveTo, filters.search, filters.sortDir]);
 
-  const { data, showSkeleton, refreshing, error } = usePanelFetch<ApiResponse>(
+  const { data, showSkeleton, refreshing, error, reload } = usePanelFetch<ApiResponse>(
     "/api/example-calls",
     params,
     { debounceMs: 0 },
@@ -439,27 +428,19 @@ export function ExampleCallPage() {
             </>
           }
         />
-        <div className="grid gap-4 px-5 py-4 xl:grid-cols-[minmax(220px,320px)_minmax(260px,1fr)_minmax(220px,1fr)_auto] xl:items-end">
-          <MonthYearPicker month={month} year={year} onChange={setMonthYearAndClearRange} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="filter-label">Başlangıç</span>
-              <Input
-                type="date"
-                value={filters.customFrom}
-                onChange={(e) => patchFilters({ customFrom: e.target.value })}
+        <div className="flex flex-wrap items-end gap-4 px-5 py-4">
+          <div>
+            <span className="filter-label">Tarih</span>
+            <div className="mt-1.5">
+              <DateRangePicker
+                value={range}
+                onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+                onRefresh={() => void reload({ silent: true, force: true })}
+                refreshing={refreshing}
               />
-            </label>
-            <label className="block">
-              <span className="filter-label">Bitiş</span>
-              <Input
-                type="date"
-                value={filters.customTo}
-                onChange={(e) => patchFilters({ customTo: e.target.value })}
-              />
-            </label>
+            </div>
           </div>
-          <label className="block">
+          <label className="block min-w-[220px] flex-1">
             <span className="filter-label">Arama</span>
             <Input
               placeholder="Personel veya numara"
@@ -467,15 +448,6 @@ export function ExampleCallPage() {
               onChange={(e) => patchFilters({ search: e.target.value })}
             />
           </label>
-          {hasCustomRange ? (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => patchFilters({ customFrom: "", customTo: "" })}
-            >
-              Aylık göster
-            </Button>
-          ) : null}
         </div>
       </section>
 

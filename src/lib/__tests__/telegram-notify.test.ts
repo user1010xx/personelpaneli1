@@ -20,4 +20,21 @@ describe("telegram activity format", () => {
     expect(text).toContain("İşlem : Mehmet çağrı denetlemesi sağlanıp puanlandı");
     expect(text).toContain("Not : Mehmet - 905451112233 - 100 Puan");
   });
+
+  it("formats knowledge duel add with result", () => {
+    const text = formatPanelActivityMessage({
+      userName: "Ahmet",
+      at: new Date("2026-08-23T06:41:49.000Z"),
+      action: "BILGI_DUELLOSU_EKLE",
+      description: "Bilgi duellosu ekledi",
+      metadata: {
+        personelName: "Mehmet",
+        result: "DOGRU",
+        recordDate: "2026-08-23",
+      },
+    });
+
+    expect(text).toContain("İşlem : Mehmet bilgi duellosu kaydı eklendi");
+    expect(text).toContain("Not : Mehmet - Doğru - 2026-08-23");
+  });
 });

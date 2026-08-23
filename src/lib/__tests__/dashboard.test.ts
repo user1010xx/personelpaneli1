@@ -12,6 +12,8 @@ describe("dashboard helpers", () => {
       egitimAdedi: 0,
       ornekCagriAdedi: 0,
       motivasyonAdedi: 0,
+      bilgiDuellosuDogruAdedi: 0,
+      bilgiDuellosuYanlisAdedi: 0,
       personelAdedi: 0,
     });
   });
@@ -33,6 +35,11 @@ describe("dashboard helpers", () => {
           { personelName: "Ali Yılmaz", recordType: "ORNEK_CAGRI" },
           { personelName: "ali yilmaz", recordType: "MOTIVASYON" },
         ],
+        knowledgeDuels: [
+          { personelName: "Ali Yılmaz", result: "DOGRU" },
+          { personelName: "ali yilmaz", result: "DOGRU" },
+          { personelName: "Ali Yılmaz", result: "YANLIS" },
+        ],
       },
       { from, to },
     );
@@ -46,9 +53,13 @@ describe("dashboard helpers", () => {
       geribildirimAdedi: 3,
       ornekCagriAdedi: 2,
       motivasyonAdedi: 1,
+      bilgiDuellosuDogruAdedi: 2,
+      bilgiDuellosuYanlisAdedi: 1,
     });
     expect(result.totals.ornekCagriAdedi).toBe(2);
     expect(result.totals.motivasyonAdedi).toBe(1);
+    expect(result.totals.bilgiDuellosuDogruAdedi).toBe(2);
+    expect(result.totals.bilgiDuellosuYanlisAdedi).toBe(1);
     expect(result.totals.geribildirimAdedi).toBe(3);
     expect(result.totals.egitimAdedi).toBe(1);
   });
@@ -59,6 +70,10 @@ describe("panel cache prefixes", () => {
     expect(affectedPrefixesForModule("EGITIM")).toEqual(["/api/training", "/api/dashboard"]);
     expect(affectedPrefixesForModule("CALL_FEEDBACK")).toEqual([
       "/api/call-feedback",
+      "/api/dashboard",
+    ]);
+    expect(affectedPrefixesForModule("KNOWLEDGE_DUEL")).toEqual([
+      "/api/knowledge-duels",
       "/api/dashboard",
     ]);
   });

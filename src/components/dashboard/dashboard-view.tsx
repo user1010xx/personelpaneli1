@@ -3,9 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MonthYearPicker } from "@/components/ui/month-year-picker";
-import { useMonthYearRange } from "@/hooks/use-month-year-range";
-import { currentMonthYear } from "@/lib/month-year";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  dateRangeFilterPatch,
+  dateRangePeriodLabel,
+  resolveDateRangeFromFilters,
+  type DateRangePreset,
+} from "@/lib/date-range-filter";
 import { emptyDashboardTotals } from "@/lib/dashboard";
 import { TableSortIcon } from "@/components/ui/sortable-th";
 import { usePanelFetch } from "@/hooks/use-panel-fetch";
@@ -23,6 +27,8 @@ type Person = {
   egitimAdedi: number;
   ornekCagriAdedi: number;
   motivasyonAdedi: number;
+  bilgiDuellosuDogruAdedi: number;
+  bilgiDuellosuYanlisAdedi: number;
 };
 
 type LeaderEntry = {
@@ -38,6 +44,8 @@ type Leaders = {
   egitim: LeaderEntry[];
   ornekCagri: LeaderEntry[];
   motivasyon: LeaderEntry[];
+  bilgiDuellosuDogru: LeaderEntry[];
+  bilgiDuellosuYanlis: LeaderEntry[];
 };
 
 type SortKey = keyof Person;
@@ -52,6 +60,8 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "egitimAdedi", label: "Eğitim" },
   { key: "ornekCagriAdedi", label: "Örnek Çağrı" },
   { key: "motivasyonAdedi", label: "Motivasyon" },
+  { key: "bilgiDuellosuDogruAdedi", label: "Bilgi Doğru" },
+  { key: "bilgiDuellosuYanlisAdedi", label: "Bilgi Yanlış" },
 ];
 
 type DashboardApiResponse = {
@@ -64,10 +74,8 @@ type DashboardApiResponse = {
 };
 
 export function DashboardView() {
-  const defaultPeriod = currentMonthYear();
   const [filters, setFilters] = usePersistedPageState("dashboard", {
-    month: defaultPeriod.month,
-    year: defaultPeriod.year,
+    datePreset: "today" as DateRangePreset,
     customFrom: "",
     customTo: "",
     search: "",
@@ -77,21 +85,18 @@ export function DashboardView() {
   const [searchInput, setSearchInput] = useState(filters.search);
   const patchFilters = (patch: Partial<typeof filters>) =>
     setFilters((f) => ({ ...f, ...patch }));
-  const { month, year, from, to, periodLabel, setMonthYear } = useMonthYearRange(
-    filters,
-    patchFilters,
+  const range = useMemo(
+    () =>
+      resolveDateRangeFromFilters({
+        datePreset: filters.datePreset,
+        customFrom: filters.customFrom,
+        customTo: filters.customTo,
+      }),
+    [filters.datePreset, filters.customFrom, filters.customTo],
   );
-  const hasCustomRange = Boolean(filters.customFrom || filters.customTo);
-  const effectiveFrom = filters.customFrom || from;
-  const effectiveTo = filters.customTo || to;
-  const effectivePeriodLabel =
-    filters.customFrom && filters.customTo
-      ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
-      : filters.customFrom
-        ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(to).toLocaleDateString("tr-TR")}`
-        : filters.customTo
-          ? `${new Date(from).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
-          : periodLabel;
+  const effectiveFrom = range.from;
+  const effectiveTo = range.to;
+  const effectivePeriodLabel = dateRangePeriodLabel(range);
 
   const params = useMemo(() => {
     const p = new URLSearchParams({ from: effectiveFrom, to: effectiveTo });
@@ -99,7 +104,7 @@ export function DashboardView() {
     return p;
   }, [effectiveFrom, effectiveTo, filters.search]);
 
-  const { data, showSkeleton, refreshing, error } = usePanelFetch<DashboardApiResponse>(
+  const { data, showSkeleton, refreshing, error, reload } = usePanelFetch<DashboardApiResponse>(
     "/api/dashboard",
     params,
     { debounceMs: 0 },
@@ -151,47 +156,30 @@ export function DashboardView() {
       <PageHeader
         kicker="Genel"
         title="Dashboard"
-        description="Personel bazında dinlenen çağrı, puan, insiyatif, eğitim ve geribildirim özeti."
+        description="Personel bazında dinlenen çağrı, puan, insiyatif, eğitim, geribildirim ve bilgi duellosu özeti."
       />
 
       <section className="panel-card p-5 sm:p-6">
-        <h2 className="mb-1 font-display text-base font-semibold tracking-tight text-ink-900">
-          Dönem seçimi
-        </h2>
-        <p className="mb-5 text-xs text-slate-500">
-          Şu an: <span className="font-semibold text-brand-800">{effectivePeriodLabel}</span>
-        </p>
-        <div className="grid gap-4 xl:grid-cols-[minmax(220px,280px)_minmax(260px,360px)_1fr_auto] xl:items-end">
-          <MonthYearPicker
-            month={month}
-            year={year}
-            onChange={(m, y) => {
-              setMonthYear(m, y);
-              patchFilters({ customFrom: "", customTo: "" });
-            }}
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="filter-label">Başlangıç</span>
-              <input
-                type="date"
-                value={filters.customFrom}
-                onChange={(e) => patchFilters({ customFrom: e.target.value })}
-                className="panel-input w-full"
-              />
-            </label>
-            <label className="block">
-              <span className="filter-label">Bitiş</span>
-              <input
-                type="date"
-                value={filters.customTo}
-                onChange={(e) => patchFilters({ customTo: e.target.value })}
-                className="panel-input w-full"
-              />
-            </label>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
+              Dönem seçimi
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Şu an: <span className="font-semibold text-brand-800">{effectivePeriodLabel}</span>
+            </p>
           </div>
+          <DateRangePicker
+            value={range}
+            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+            align="end"
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-600">Ara</span>
+            <span className="filter-label">Ara</span>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -208,15 +196,6 @@ export function DashboardView() {
             <Button type="button" onClick={applySearch}>
               Uygula
             </Button>
-            {hasCustomRange ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => patchFilters({ customFrom: "", customTo: "" })}
-              >
-                Aylık göster
-              </Button>
-            ) : null}
             <Button type="button" variant="secondary" onClick={exportExcel}>
               <Download className="h-4 w-4" />
               Export
@@ -281,6 +260,18 @@ export function DashboardView() {
           hint="İletilen adet"
           tone="emerald"
         />
+        <MetricCard
+          label="Bilgi duellosu doğru"
+          value={totals.bilgiDuellosuDogruAdedi}
+          hint="Doğru yanıt"
+          tone="emerald"
+        />
+        <MetricCard
+          label="Bilgi duellosu yanlış"
+          value={totals.bilgiDuellosuYanlisAdedi}
+          hint="Hatalı yanıt"
+          tone="rose"
+        />
       </section>
 
       <section className="data-table-wrap">
@@ -310,13 +301,13 @@ export function DashboardView() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-slate-500">
                     Seçilen aralıkta veri yok.
                   </td>
                 </tr>
@@ -331,6 +322,8 @@ export function DashboardView() {
                     <td className="tabular-nums">{person.egitimAdedi}</td>
                     <td className="tabular-nums">{person.ornekCagriAdedi}</td>
                     <td className="tabular-nums">{person.motivasyonAdedi}</td>
+                    <td className="tabular-nums">{person.bilgiDuellosuDogruAdedi}</td>
+                    <td className="tabular-nums">{person.bilgiDuellosuYanlisAdedi}</td>
                   </tr>
                 ))
               )}

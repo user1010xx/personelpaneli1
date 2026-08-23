@@ -11,6 +11,7 @@ export type DashboardSourceRows = {
   training: { personelName: string; recordType: "EGITIM" | "GERIBILDIRIM" }[];
   callFeedback: { personelName: string }[];
   exampleCalls: { personelName: string; recordType?: "ORNEK_CAGRI" | "MOTIVASYON" }[];
+  knowledgeDuels: { personelName: string; result: "DOGRU" | "YANLIS" }[];
 };
 
 type MetricBucket = {
@@ -20,6 +21,8 @@ type MetricBucket = {
   egitim: number;
   ornekCagri: number;
   motivasyon: number;
+  bilgiDuellosuDogru: number;
+  bilgiDuellosuYanlis: number;
 };
 
 export type DashboardPerson = {
@@ -31,6 +34,8 @@ export type DashboardPerson = {
   egitimAdedi: number;
   ornekCagriAdedi: number;
   motivasyonAdedi: number;
+  bilgiDuellosuDogruAdedi: number;
+  bilgiDuellosuYanlisAdedi: number;
 };
 
 export type DashboardTotals = {
@@ -41,6 +46,8 @@ export type DashboardTotals = {
   egitimAdedi: number;
   ornekCagriAdedi: number;
   motivasyonAdedi: number;
+  bilgiDuellosuDogruAdedi: number;
+  bilgiDuellosuYanlisAdedi: number;
   personelAdedi: number;
 };
 
@@ -58,6 +65,8 @@ export type DashboardLeaders = {
   egitim: LeaderEntry[];
   ornekCagri: LeaderEntry[];
   motivasyon: LeaderEntry[];
+  bilgiDuellosuDogru: LeaderEntry[];
+  bilgiDuellosuYanlis: LeaderEntry[];
 };
 
 export type DashboardResult = {
@@ -96,7 +105,16 @@ function topUniqueLeaders(
 }
 
 function emptyBucket(): MetricBucket {
-  return { scores: [], insiyatif: 0, geribildirim: 0, egitim: 0, ornekCagri: 0, motivasyon: 0 };
+  return {
+    scores: [],
+    insiyatif: 0,
+    geribildirim: 0,
+    egitim: 0,
+    ornekCagri: 0,
+    motivasyon: 0,
+    bilgiDuellosuDogru: 0,
+    bilgiDuellosuYanlis: 0,
+  };
 }
 
 function avg(values: number[]) {
@@ -114,6 +132,8 @@ function toPerson(personelName: string, data: MetricBucket): DashboardPerson {
     egitimAdedi: data.egitim,
     ornekCagriAdedi: data.ornekCagri,
     motivasyonAdedi: data.motivasyon,
+    bilgiDuellosuDogruAdedi: data.bilgiDuellosuDogru,
+    bilgiDuellosuYanlisAdedi: data.bilgiDuellosuYanlis,
   };
 }
 
@@ -166,6 +186,13 @@ export function buildDashboardResult(
     else buckets.get(key)!.ornekCagri += 1;
   }
 
+  for (const row of sources.knowledgeDuels) {
+    const key = register(row.personelName);
+    if (!key) continue;
+    if (row.result === "DOGRU") buckets.get(key)!.bilgiDuellosuDogru += 1;
+    else buckets.get(key)!.bilgiDuellosuYanlis += 1;
+  }
+
   const rows: DashboardPerson[] = [];
   for (const [key, data] of buckets) {
     const personelName = displayNames.get(key) ?? key;
@@ -189,6 +216,8 @@ export function buildDashboardResult(
     egitimAdedi: rows.reduce((sum, row) => sum + row.egitimAdedi, 0),
     ornekCagriAdedi: rows.reduce((sum, row) => sum + row.ornekCagriAdedi, 0),
     motivasyonAdedi: rows.reduce((sum, row) => sum + row.motivasyonAdedi, 0),
+    bilgiDuellosuDogruAdedi: rows.reduce((sum, row) => sum + row.bilgiDuellosuDogruAdedi, 0),
+    bilgiDuellosuYanlisAdedi: rows.reduce((sum, row) => sum + row.bilgiDuellosuYanlisAdedi, 0),
     personelAdedi: rows.length,
   };
 
@@ -203,6 +232,16 @@ export function buildDashboardResult(
       egitim: topUniqueLeaders(rows, (p) => p.egitimAdedi, (v) => `${Math.round(v)} eğitim`),
       ornekCagri: topUniqueLeaders(rows, (p) => p.ornekCagriAdedi, (v) => `${Math.round(v)} örnek çağrı`),
       motivasyon: topUniqueLeaders(rows, (p) => p.motivasyonAdedi, (v) => `${Math.round(v)} motivasyon`),
+      bilgiDuellosuDogru: topUniqueLeaders(
+        rows,
+        (p) => p.bilgiDuellosuDogruAdedi,
+        (v) => `${Math.round(v)} doğru`,
+      ),
+      bilgiDuellosuYanlis: topUniqueLeaders(
+        rows,
+        (p) => p.bilgiDuellosuYanlisAdedi,
+        (v) => `${Math.round(v)} yanlış`,
+      ),
     },
     from: params.from.toISOString(),
     to: params.to.toISOString(),
@@ -220,8 +259,14 @@ export async function getDashboardData(params: {
     ? startOfDay(params.from)
     : startOfDay(new Date(to.getTime() - 18 * 86400000));
 
-  const [qualityRows, initiativeRows, trainingRows, callFeedbackRows, exampleCallRows] =
-    await Promise.all([
+  const [
+    qualityRows,
+    initiativeRows,
+    trainingRows,
+    callFeedbackRows,
+    exampleCallRows,
+    knowledgeDuelRows,
+  ] = await Promise.all([
     prisma.qualityScore.findMany({
       where: { recordDate: { gte: from, lte: to } },
       select: { personelName: true, score: true },
@@ -252,6 +297,12 @@ export async function getDashboardData(params: {
       take: DASHBOARD_ROW_LIMIT,
       orderBy: [{ recordDate: "desc" }],
     }),
+    prisma.knowledgeDuel.findMany({
+      where: { recordDate: { gte: from, lte: to } },
+      select: { personelName: true, result: true },
+      take: DASHBOARD_ROW_LIMIT,
+      orderBy: [{ recordDate: "desc" }],
+    }),
   ]);
 
   return buildDashboardResult(
@@ -261,6 +312,7 @@ export async function getDashboardData(params: {
       training: trainingRows,
       callFeedback: callFeedbackRows,
       exampleCalls: exampleCallRows,
+      knowledgeDuels: knowledgeDuelRows,
     },
     {
       from,
@@ -271,7 +323,8 @@ export async function getDashboardData(params: {
         initiativeRows.length >= DASHBOARD_ROW_LIMIT ||
         trainingRows.length >= DASHBOARD_ROW_LIMIT ||
         callFeedbackRows.length >= DASHBOARD_ROW_LIMIT ||
-        exampleCallRows.length >= DASHBOARD_ROW_LIMIT,
+        exampleCallRows.length >= DASHBOARD_ROW_LIMIT ||
+        knowledgeDuelRows.length >= DASHBOARD_ROW_LIMIT,
     },
   );
 }
@@ -285,6 +338,8 @@ export function emptyDashboardTotals(): DashboardTotals {
     egitimAdedi: 0,
     ornekCagriAdedi: 0,
     motivasyonAdedi: 0,
+    bilgiDuellosuDogruAdedi: 0,
+    bilgiDuellosuYanlisAdedi: 0,
     personelAdedi: 0,
   };
 }

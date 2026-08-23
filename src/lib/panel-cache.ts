@@ -56,6 +56,8 @@ export function affectedPrefixesForModule(moduleKey: string) {
       return ["/api/call-feedback", "/api/dashboard"];
     case "EXAMPLE_CALL":
       return ["/api/example-calls", "/api/dashboard"];
+    case "KNOWLEDGE_DUEL":
+      return ["/api/knowledge-duels", "/api/dashboard"];
     case "INITIATIVE_WORK":
       return ["/api/initiative-work", "/api/dashboard"];
     case "SUGGESTION_REQUEST":
@@ -100,6 +102,7 @@ export function invalidateDataCaches() {
     "/api/quality",
     "/api/initiative-work",
     "/api/example-calls",
+    "/api/knowledge-duels",
     "/api/suggestion-requests",
   ]);
 }

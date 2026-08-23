@@ -10,6 +10,12 @@ import type { SortDir } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  dateRangePeriodLabel,
+  resolveDateRange,
+  type DateRangeValue,
+} from "@/lib/date-range-filter";
 import { cn } from "@/lib/utils";
 
 type LogRow = {
@@ -33,8 +39,7 @@ export function ActivityLogPage() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [range, setRange] = useState<DateRangeValue>(() => resolveDateRange("today"));
 
   const params = useMemo(() => {
     const p = new URLSearchParams({
@@ -42,12 +47,12 @@ export function ActivityLogPage() {
       pageSize: "50",
       sortBy,
       sortDir,
+      from: range.from,
+      to: range.to,
     });
     if (search.trim()) p.set("search", search.trim());
-    if (from) p.set("from", from);
-    if (to) p.set("to", to);
     return p;
-  }, [from, page, search, sortBy, sortDir, to]);
+  }, [page, range.from, range.to, search, sortBy, sortDir]);
 
   const handleSort = (key: string) => {
     setSortDir((dir) => nextSortDir(sortBy, key, dir));
@@ -73,7 +78,22 @@ export function ActivityLogPage() {
         description="Tüm admin ve kullanıcı işlemleri — kim, ne zaman, ne yaptı."
       />
 
-      <div className="filter-toolbar">
+      <div className="filter-toolbar lg:items-center">
+        <div>
+          <span className="filter-label">Tarih</span>
+          <div className="mt-1.5">
+            <DateRangePicker
+              value={range}
+              onChange={(next) => {
+                setRange(next);
+                setPage(1);
+              }}
+              onRefresh={() => void reload({ silent: true, force: true })}
+              refreshing={refreshing}
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-slate-500">{dateRangePeriodLabel(range)}</p>
+        </div>
         <div className="filter-field min-w-[240px] flex-[2]">
           <span className="filter-label">Arama</span>
           <div className="relative">
@@ -89,41 +109,15 @@ export function ActivityLogPage() {
             />
           </div>
         </div>
-        <div className="filter-field min-w-[160px]">
-          <span className="filter-label">Başlangıç</span>
-          <Input
-            type="date"
-            value={from}
-            onChange={(e) => {
-              setFrom(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-        <div className="filter-field min-w-[160px]">
-          <span className="filter-label">Bitiş</span>
-          <Input
-            type="date"
-            value={to}
-            onChange={(e) => {
-              setTo(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
         <Button
           variant="secondary"
           onClick={() => {
             setSearch("");
-            setFrom("");
-            setTo("");
+            setRange(resolveDateRange("today"));
             setPage(1);
           }}
         >
           Filtreleri temizle
-        </Button>
-        <Button variant="secondary" onClick={() => void reload({ silent: true, force: true })}>
-          Yenile
         </Button>
       </div>
 

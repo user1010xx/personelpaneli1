@@ -9,32 +9,38 @@ import {
   resolveDateRangeFromFilters,
   type DateRangePreset,
 } from "@/lib/date-range-filter";
+import type { Period } from "@/lib/date-ranges";
+import { PERIOD_LABELS } from "@/lib/date-ranges";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { formatWorkDuration } from "@/lib/initiative-work";
 import { usePanelFetch } from "@/hooks/use-panel-fetch";
 import { usePersistedPageState } from "@/hooks/use-persisted-page-state";
 import { RefreshingHint } from "@/components/ui/refreshing-hint";
 import { SortableTh, useClientTableSort } from "@/components/ui/sortable-th";
-import { invalidatePrefixes } from "@/lib/panel-cache";
+import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import {
+  KNOWLEDGE_DUEL_RESULT_LABELS,
+  type KnowledgeDuelPeriodCounts,
+  type KnowledgeDuelResult,
+} from "@/lib/knowledge-duel";
 
 type Row = {
   id: string;
   personelName: string;
+  result: KnowledgeDuelResult;
   recordDate: string;
-  callCount: number;
-  talkDurationSeconds: number;
-  memberCount: number;
   createdAt: string;
 };
 
 type SummaryRow = {
   personelName: string;
-  calismaAdedi: number;
+  dogruAdedi: number;
+  yanlisAdedi: number;
+  toplam: number;
 };
 
 type ApiResponse = {
@@ -42,14 +48,17 @@ type ApiResponse = {
   summary: SummaryRow[];
   total: number;
   truncated?: boolean;
+  periodCounts?: {
+    daily: KnowledgeDuelPeriodCounts;
+    weekly: KnowledgeDuelPeriodCounts;
+    monthly: KnowledgeDuelPeriodCounts;
+  };
 };
 
 const emptyForm = () => ({
   personelName: "",
   recordDate: new Date().toISOString().slice(0, 10),
-  callCount: "",
-  talkDuration: "",
-  memberCount: "",
+  result: "DOGRU" as KnowledgeDuelResult,
 });
 
 function formatDate(iso: string) {
@@ -66,13 +75,14 @@ function formatDateTime(iso: string) {
   });
 }
 
-export function InitiativeWorkPage() {
-  const [filters, setFilters] = usePersistedPageState("insiyatif-calisma", {
+export function KnowledgeDuelPage() {
+  const [filters, setFilters] = usePersistedPageState("bilgi-duellosu", {
     search: "",
     datePreset: "today" as DateRangePreset,
     customFrom: "",
     customTo: "",
     sortDir: "desc" as "asc" | "desc",
+    period: "daily" as Period,
   });
   const patchFilters = (patch: Partial<typeof filters>) =>
     setFilters((current) => ({ ...current, ...patch }));
@@ -100,21 +110,23 @@ export function InitiativeWorkPage() {
   }, [effectiveFrom, effectiveTo, filters.search, filters.sortDir]);
 
   const { data, showSkeleton, refreshing, error, reload } = usePanelFetch<ApiResponse>(
-    "/api/initiative-work",
+    "/api/knowledge-duels",
     params,
     { debounceMs: 0 },
   );
 
   const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const summary = useMemo(() => data?.summary ?? [], [data?.summary]);
-  const { search, sortDir } = filters;
-  const summarySort = useClientTableSort<"personelName" | "calismaAdedi">(
+  const periodCounts = data?.periodCounts;
+  const { search, period } = filters;
+  const summarySort = useClientTableSort<"personelName" | "dogruAdedi" | "yanlisAdedi" | "toplam">(
     "personelName",
     "asc",
   );
-  const rowSort = useClientTableSort<
-    "createdAt" | "recordDate" | "personelName" | "callCount" | "talkDurationSeconds" | "memberCount"
-  >("recordDate", "desc");
+  const rowSort = useClientTableSort<"createdAt" | "recordDate" | "personelName" | "result">(
+    "recordDate",
+    "desc",
+  );
 
   const sortedSummary = useMemo(() => summarySort.sort(summary), [summary, summarySort]);
   const sortedRows = useMemo(() => rowSort.sort(rows), [rows, rowSort]);
@@ -125,6 +137,12 @@ export function InitiativeWorkPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "ok" | "error" } | null>(null);
   const formAnchorRef = useRef<HTMLDivElement>(null);
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+  }
 
   useEffect(() => {
     if (error) setMessage({ text: error, type: "error" });
@@ -148,24 +166,14 @@ export function InitiativeWorkPage() {
     };
   }, [formOpen]);
 
-  const summaryTotal = useMemo(
-    () => summary.reduce((total, row) => total + row.calismaAdedi, 0),
+  const summaryTotals = useMemo(
+    () => ({
+      dogru: summary.reduce((total, row) => total + row.dogruAdedi, 0),
+      yanlis: summary.reduce((total, row) => total + row.yanlisAdedi, 0),
+    }),
     [summary],
   );
-  const initiativeTotals = useMemo(
-    () => ({
-      callCount: rows.reduce((total, row) => total + row.callCount, 0),
-      memberCount: rows.reduce((total, row) => total + row.memberCount, 0),
-      talkSeconds: rows.reduce((total, row) => total + row.talkDurationSeconds, 0),
-    }),
-    [rows],
-  );
-
-  function closeForm() {
-    setFormOpen(false);
-    setEditingId(null);
-    setForm(emptyForm());
-  }
+  const summaryTotal = summaryTotals.dogru + summaryTotals.yanlis;
 
   function openNewForm() {
     setEditingId(null);
@@ -178,9 +186,7 @@ export function InitiativeWorkPage() {
     setForm({
       personelName: row.personelName,
       recordDate: row.recordDate.slice(0, 10),
-      callCount: String(row.callCount),
-      talkDuration: formatWorkDuration(row.talkDurationSeconds),
-      memberCount: String(row.memberCount),
+      result: row.result,
     });
     setFormOpen(true);
   }
@@ -190,18 +196,12 @@ export function InitiativeWorkPage() {
     setSaving(true);
     setMessage(null);
     const res = await fetch(
-      editingId ? `/api/initiative-work/${editingId}` : "/api/initiative-work",
+      editingId ? `/api/knowledge-duels/${editingId}` : "/api/knowledge-duels",
       {
         method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          personelName: form.personelName,
-          recordDate: form.recordDate,
-          callCount: Number(form.callCount),
-          talkDuration: form.talkDuration,
-          memberCount: Number(form.memberCount),
-        }),
+        body: JSON.stringify(form),
       },
     );
     const json = await res.json().catch(() => ({}));
@@ -211,13 +211,13 @@ export function InitiativeWorkPage() {
       return;
     }
     closeForm();
-    invalidatePrefixes(["/api/initiative-work"]);
+    invalidateModuleDataCaches("KNOWLEDGE_DUEL");
     setMessage({ text: editingId ? "Kayıt güncellendi" : "Kayıt eklendi", type: "ok" });
   }
 
   async function remove(row: Row) {
     if (!confirm(`${row.personelName} kaydı silinsin mi?`)) return;
-    const res = await fetch(`/api/initiative-work/${row.id}`, {
+    const res = await fetch(`/api/knowledge-duels/${row.id}`, {
       method: "DELETE",
       credentials: "include",
     });
@@ -226,120 +226,111 @@ export function InitiativeWorkPage() {
       setMessage({ text: json.error ?? "Kayıt silinemedi", type: "error" });
       return;
     }
-    invalidatePrefixes(["/api/initiative-work"]);
+    invalidateModuleDataCaches("KNOWLEDGE_DUEL");
     setMessage({ text: "Kayıt silindi", type: "ok" });
   }
 
   function exportExcel() {
     const p = new URLSearchParams({ from: effectiveFrom, to: effectiveTo });
     if (search) p.set("search", search);
-    window.open(`/api/initiative-work/export?${p}`, "_blank");
+    window.open(`/api/knowledge-duels/export?${p}`, "_blank");
   }
+
+  const periods: Period[] = ["daily", "weekly", "monthly"];
 
   return (
     <div className="space-y-6">
       <PageHeader
         kicker="Operasyon"
-        title="İnsiyatif Çalışma"
-        description="Kendi insiyatifiyle alınan çağrıların kaydı, özet kartları ve geçmişi."
+        title="Bilgi Duellosu"
+        description="Personele iletilen soruya verilen yanıt doğru veya yanlış olarak kaydedilir. Her personel için günde bir kez girilir; sonuçlar tabloda birikir."
         actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <div ref={formAnchorRef} className="relative">
-            <Button
-              type="button"
-              onClick={() => (formOpen && !editingId ? closeForm() : openNewForm())}
-              className={cn(formOpen && "ring-2 ring-brand-300")}
-            >
-              <Plus className="h-4 w-4" />
-              Ekle
-              <ChevronDown className={cn("h-4 w-4 transition-transform", formOpen && "rotate-180")} />
-            </Button>
-
-            {formOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),28rem)] animate-fade-in">
-                <form
-                  onSubmit={submit}
-                  className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-panel-lg"
-                >
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-900">
-                        {editingId ? "Kaydı Düzenle" : "Yeni Çalışma Kaydı"}
-                      </h2>
-                      <p className="mt-0.5 text-xs text-slate-500">Bilgileri girin ve ekleyin</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <div ref={formAnchorRef} className="relative">
+              <Button
+                type="button"
+                onClick={() => (formOpen && !editingId ? closeForm() : openNewForm())}
+                className={cn(formOpen && "ring-2 ring-brand-300")}
+              >
+                <Plus className="h-4 w-4" />
+                Ekle
+                <ChevronDown className={cn("h-4 w-4 transition-transform", formOpen && "rotate-180")} />
+              </Button>
+              {formOpen ? (
+                <div className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),28rem)] animate-fade-in">
+                  <form
+                    onSubmit={submit}
+                    className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-panel-lg"
+                  >
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div>
+                        <h2 className="text-base font-semibold text-slate-900">
+                          {editingId ? "Kaydı Düzenle" : "Yeni Kayıt"}
+                        </h2>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Personel, tarih ve yanıt sonucunu girin. Aynı personel aynı gün yalnızca bir kez kaydedilebilir.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={closeForm}
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        aria-label="Kapat"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={closeForm}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                      aria-label="Kapat"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Field label="Personel Adı">
-                      <Input
-                        value={form.personelName}
-                        onChange={(e) => setForm({ ...form, personelName: e.target.value })}
-                        required
-                        autoFocus
-                      />
-                    </Field>
-                    <Field label="Çalıştığı Tarih">
-                      <Input
-                        type="date"
-                        value={form.recordDate}
-                        onChange={(e) => setForm({ ...form, recordDate: e.target.value })}
-                        required
-                      />
-                    </Field>
-                    <Field label="Arama Adedi">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={form.callCount}
-                        onChange={(e) => setForm({ ...form, callCount: e.target.value })}
-                        required
-                      />
-                    </Field>
-                    <Field label="Konuşma Süresi">
-                      <Input
-                        value={form.talkDuration}
-                        onChange={(e) => setForm({ ...form, talkDuration: e.target.value })}
-                        placeholder="01:20:30 veya saniye"
-                        required
-                      />
-                    </Field>
-                    <Field label="Üye Adedi">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={form.memberCount}
-                        onChange={(e) => setForm({ ...form, memberCount: e.target.value })}
-                        required
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
-                    <Button type="submit" className="flex-1" disabled={saving}>
-                      {saving ? "Kaydediliyor..." : editingId ? "Güncelle" : "Ekle"}
-                    </Button>
-                    <Button type="button" variant="ghost" onClick={closeForm}>
-                      İptal
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            ) : null}
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Personel Adı</Label>
+                        <Input
+                          value={form.personelName}
+                          onChange={(e) => setForm({ ...form, personelName: e.target.value })}
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <Label>Tarih</Label>
+                        <Input
+                          type="date"
+                          value={form.recordDate}
+                          onChange={(e) => setForm({ ...form, recordDate: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Sonuç</Label>
+                        <select
+                          className="panel-input"
+                          value={form.result}
+                          onChange={(e) =>
+                            setForm({ ...form, result: e.target.value as KnowledgeDuelResult })
+                          }
+                          required
+                        >
+                          <option value="DOGRU">Doğru</option>
+                          <option value="YANLIS">Yanlış</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                      <Button type="submit" className="flex-1" disabled={saving}>
+                        {saving ? "Kaydediliyor..." : editingId ? "Güncelle" : "Kaydet"}
+                      </Button>
+                      <Button type="button" variant="ghost" onClick={closeForm}>
+                        İptal
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              ) : null}
+            </div>
+            <Button variant="secondary" onClick={exportExcel}>
+              <Download className="h-4 w-4" />
+              Excel İndir
+            </Button>
           </div>
-          <Button variant="secondary" onClick={exportExcel}>
-            <Download className="h-4 w-4" />
-            Excel İndir
-          </Button>
-        </div>
         }
       />
 
@@ -359,31 +350,51 @@ export function InitiativeWorkPage() {
       <RefreshingHint show={refreshing && rows.length > 0} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Çalışma kaydı"
-          value={summaryTotal}
-          hint={effectivePeriodLabel}
-          imageSrc="/visuals/briefcase.jpg"
-          tone="amber"
-        />
-        <MetricCard
-          label="Toplam arama"
-          value={initiativeTotals.callCount}
-          hint="İnsiyatif çağrıları"
-          tone="blue"
-        />
-        <MetricCard
-          label="Toplam üye"
-          value={initiativeTotals.memberCount}
-          hint="Kayıtlı üye adedi"
-          tone="emerald"
-        />
-        <MetricCard
-          label="Konuşma süresi"
-          value={formatWorkDuration(initiativeTotals.talkSeconds)}
-          hint="Toplam süre"
-          tone="violet"
-        />
+        <MetricCard label="Doğru" value={summaryTotals.dogru} hint={effectivePeriodLabel} tone="emerald" />
+        <MetricCard label="Yanlış" value={summaryTotals.yanlis} hint={effectivePeriodLabel} tone="rose" />
+        <MetricCard label="Toplam" value={summaryTotal} hint="Doğru ve yanlış toplamı" tone="blue" />
+        <MetricCard label="Personel" value={summary.length} hint="Kayıtı olan kişi" tone="violet" />
+      </section>
+
+      <section className="panel-card overflow-hidden">
+        <SectionHeader title="Dönem özeti" description="Günlük, haftalık ve aylık doğru / yanlış adetleri" />
+        <div className="space-y-4 p-5">
+          <div className="segmented-control">
+            {periods.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => patchFilters({ period: item })}
+                className={cn("segmented-item", period === item && "segmented-item-active")}
+              >
+                {PERIOD_LABELS[item]}
+              </button>
+            ))}
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {periods.map((item) => {
+              const counts = periodCounts?.[item];
+              return (
+                <div
+                  key={item}
+                  className={cn("panel-card p-4", period === item && "ring-1 ring-brand-500/25")}
+                >
+                  <p className="kicker">{PERIOD_LABELS[item]}</p>
+                  <p className="mt-2 font-display text-3xl font-semibold text-brand-700">
+                    {counts?.toplam ?? 0}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Doğru: <span className="font-semibold">{counts?.dogru ?? 0}</span>
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    Yanlış: <span className="font-semibold">{counts?.yanlis ?? 0}</span>
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">{counts?.personel ?? 0} personel</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <section className="panel-card overflow-hidden">
@@ -395,7 +406,7 @@ export function InitiativeWorkPage() {
             </>
           }
         />
-        <div className="flex flex-wrap items-end gap-4 border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-wrap items-end gap-4 px-5 py-4">
           <div>
             <span className="filter-label">Tarih</span>
             <div className="mt-1.5">
@@ -407,89 +418,52 @@ export function InitiativeWorkPage() {
               />
             </div>
           </div>
-          <label className="block min-w-[200px] flex-1">
+          <label className="block min-w-[220px] flex-1">
             <span className="filter-label">Arama</span>
             <Input
-              placeholder="Personel ara"
+              placeholder="Personel adı"
               value={search}
               onChange={(e) => patchFilters({ search: e.target.value })}
             />
           </label>
-          <label className="block min-w-[140px]">
-            <span className="filter-label">Yön</span>
-            <select
-              className="panel-input"
-              value={sortDir}
-              onChange={(e) => {
-                const nextSortDir = e.target.value as "asc" | "desc";
-                patchFilters({ sortDir: nextSortDir });
-                rowSort.setSortDir(nextSortDir);
-              }}
-            >
-              <option value="desc">Azalan</option>
-              <option value="asc">Artan</option>
-            </select>
-          </label>
         </div>
       </section>
 
-      {data?.truncated ? (
-        <p className="text-xs font-medium text-amber-700">
-          Kayıt üst sınırına ulaşıldı; tarih aralığını daraltmanız önerilir.
-        </p>
-      ) : null}
-
       <section className="panel-card overflow-hidden">
         <SectionHeader
-          title="Çalışma Özeti"
-          description="Personel bazında çalışma adedi"
+          title="Personel özeti"
+          description="Seçilen aralıkta biriken doğru ve yanlış adetleri"
         />
         <div className="p-5">
           {showSkeleton ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-40 animate-pulse rounded-3xl bg-slate-100" />
+                <div key={i} className="h-32 animate-pulse rounded-xl bg-slate-100" />
               ))}
             </div>
           ) : summary.length === 0 ? (
             <p className="py-8 text-center text-sm text-slate-500">Bu tarih aralığında kayıt yok.</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {sortedSummary.map((row) => {
-                const personRows = rows.filter((item) => item.personelName === row.personelName);
-                return (
-                  <PersonCard
-                    key={row.personelName}
-                    name={row.personelName}
-                    stats={[
-                      { label: "Çalışma adedi", value: row.calismaAdedi },
-                      {
-                        label: "Arama",
-                        value: personRows.reduce((total, item) => total + item.callCount, 0),
-                      },
-                      {
-                        label: "Üye",
-                        value: personRows.reduce((total, item) => total + item.memberCount, 0),
-                      },
-                      {
-                        label: "Süre",
-                        value: formatWorkDuration(
-                          personRows.reduce((total, item) => total + item.talkDurationSeconds, 0),
-                        ),
-                      },
-                    ]}
-                  />
-                );
-              })}
+              {sortedSummary.map((row) => (
+                <PersonCard
+                  key={row.personelName}
+                  name={row.personelName}
+                  stats={[
+                    { label: "Doğru", value: row.dogruAdedi },
+                    { label: "Yanlış", value: row.yanlisAdedi },
+                  ]}
+                />
+              ))}
             </div>
           )}
         </div>
       </section>
 
       <section className="panel-card overflow-hidden">
-        <div className="border-b border-slate-100 px-5 py-3">
+        <div className="border-b border-[var(--border)] px-5 py-3">
           <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
-            Geçmiş çalışmalar
+            Geçmiş kayıtlar
           </h2>
         </div>
         <div className="overflow-x-auto">
@@ -497,7 +471,7 @@ export function InitiativeWorkPage() {
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <SortableTh
-                  label="Eklenme Tarihi"
+                  label="Eklenme"
                   sortKey="createdAt"
                   activeKey={rowSort.sortKey}
                   dir={rowSort.sortDir}
@@ -505,7 +479,7 @@ export function InitiativeWorkPage() {
                   className="px-4 py-3"
                 />
                 <SortableTh
-                  label="Çalıştığı Tarih"
+                  label="Tarih"
                   sortKey="recordDate"
                   activeKey={rowSort.sortKey}
                   dir={rowSort.sortDir}
@@ -521,24 +495,8 @@ export function InitiativeWorkPage() {
                   className="px-4 py-3"
                 />
                 <SortableTh
-                  label="Arama Adedi"
-                  sortKey="callCount"
-                  activeKey={rowSort.sortKey}
-                  dir={rowSort.sortDir}
-                  onSort={(key) => rowSort.toggleSort(key as typeof rowSort.sortKey)}
-                  className="px-4 py-3"
-                />
-                <SortableTh
-                  label="Konuşma Süresi"
-                  sortKey="talkDurationSeconds"
-                  activeKey={rowSort.sortKey}
-                  dir={rowSort.sortDir}
-                  onSort={(key) => rowSort.toggleSort(key as typeof rowSort.sortKey)}
-                  className="px-4 py-3"
-                />
-                <SortableTh
-                  label="Üye Adedi"
-                  sortKey="memberCount"
+                  label="Sonuç"
+                  sortKey="result"
                   activeKey={rowSort.sortKey}
                   dir={rowSort.sortDir}
                   onSort={(key) => rowSort.toggleSort(key as typeof rowSort.sortKey)}
@@ -550,13 +508,13 @@ export function InitiativeWorkPage() {
             <tbody>
               {showSkeleton ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                     Yükleniyor...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                     Kayıt bulunamadı.
                   </td>
                 </tr>
@@ -566,9 +524,18 @@ export function InitiativeWorkPage() {
                     <td className="whitespace-nowrap px-4 py-3">{formatDateTime(row.createdAt)}</td>
                     <td className="whitespace-nowrap px-4 py-3">{formatDate(row.recordDate)}</td>
                     <td className="px-4 py-3 font-medium">{row.personelName}</td>
-                    <td className="px-4 py-3">{row.callCount}</td>
-                    <td className="px-4 py-3">{formatWorkDuration(row.talkDurationSeconds)}</td>
-                    <td className="px-4 py-3">{row.memberCount}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
+                          row.result === "DOGRU"
+                            ? "bg-emerald-50 text-emerald-800"
+                            : "bg-rose-50 text-rose-800",
+                        )}
+                      >
+                        {KNOWLEDGE_DUEL_RESULT_LABELS[row.result]}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <button
@@ -594,15 +561,6 @@ export function InitiativeWorkPage() {
           </table>
         </div>
       </section>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      {children}
     </div>
   );
 }

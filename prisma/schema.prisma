@@ -27,6 +27,11 @@ enum ExampleCallType {
   MOTIVASYON
 }
 
+enum KnowledgeDuelResult {
+  DOGRU
+  YANLIS
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -41,6 +46,7 @@ model User {
   trainingFeedbacks  TrainingFeedback[]
   callFeedbacks      CallFeedback[]
   exampleCalls       ExampleCall[]
+  knowledgeDuels     KnowledgeDuel[]
   activityLogs       ActivityLog[]
   suggestionRequests SuggestionRequest[]
   initiativeWorks    InitiativeWork[]
@@ -170,6 +176,23 @@ model InitiativeWork {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  @@index([personelName, recordDate])
+  @@index([recordDate])
+  @@index([createdById])
+}
+
+model KnowledgeDuel {
+  id           String               @id @default(cuid())
+  personelName String
+  personelKey  String
+  recordDate   DateTime
+  result       KnowledgeDuelResult
+  createdById  String?
+  createdBy    User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([personelKey, recordDate])
   @@index([personelName, recordDate])
   @@index([recordDate])
   @@index([createdById])

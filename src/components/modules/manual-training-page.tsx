@@ -2,9 +2,13 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Pencil, Plus, X } from "lucide-react";
-import { MonthYearPicker } from "@/components/ui/month-year-picker";
-import { useMonthYearRange } from "@/hooks/use-month-year-range";
-import { currentMonthYear } from "@/lib/month-year";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  dateRangeFilterPatch,
+  dateRangePeriodLabel,
+  resolveDateRangeFromFilters,
+  type DateRangePreset,
+} from "@/lib/date-range-filter";
 import type { TrainingRecordType } from "@prisma/client";
 import type { Period } from "@/lib/date-ranges";
 import type { TrainingPeriodCounts } from "@/lib/training";
@@ -103,11 +107,9 @@ export function ManualTrainingPage({
   hideRecordType = false,
   periodStatsMode = "split",
 }: FeedbackPageConfig) {
-  const defaultPeriod = currentMonthYear();
   const [filters, setFilters] = usePersistedPageState(persistKey, {
     search: "",
-    month: defaultPeriod.month,
-    year: defaultPeriod.year,
+    datePreset: "today" as DateRangePreset,
     customFrom: "",
     customTo: "",
     sortDir: "desc" as "asc" | "desc",
@@ -115,25 +117,18 @@ export function ManualTrainingPage({
   });
   const patchFilters = (patch: Partial<typeof filters>) =>
     setFilters((f) => ({ ...f, ...patch }));
-  const { month, year, from, to, periodLabel, setMonthYear } = useMonthYearRange(
-    filters,
-    patchFilters,
+  const range = useMemo(
+    () =>
+      resolveDateRangeFromFilters({
+        datePreset: filters.datePreset,
+        customFrom: filters.customFrom,
+        customTo: filters.customTo,
+      }),
+    [filters.datePreset, filters.customFrom, filters.customTo],
   );
-  const hasCustomRange = Boolean(filters.customFrom || filters.customTo);
-  const effectiveFrom = filters.customFrom || from;
-  const effectiveTo = filters.customTo || to;
-  const effectivePeriodLabel =
-    filters.customFrom && filters.customTo
-      ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
-      : filters.customFrom
-        ? `${new Date(filters.customFrom).toLocaleDateString("tr-TR")} - ${new Date(to).toLocaleDateString("tr-TR")}`
-        : filters.customTo
-          ? `${new Date(from).toLocaleDateString("tr-TR")} - ${new Date(filters.customTo).toLocaleDateString("tr-TR")}`
-          : periodLabel;
-  const setMonthYearAndClearRange = (nextMonth: number, nextYear: number) => {
-    setMonthYear(nextMonth, nextYear);
-    patchFilters({ customFrom: "", customTo: "" });
-  };
+  const effectiveFrom = range.from;
+  const effectiveTo = range.to;
+  const effectivePeriodLabel = dateRangePeriodLabel(range);
   const params = useMemo(() => {
     const p = new URLSearchParams({
       search: filters.search,
@@ -144,9 +139,9 @@ export function ManualTrainingPage({
       pageSize: "5000",
     });
     return p;
-  }, [effectiveFrom, effectiveTo, filters]);
+  }, [effectiveFrom, effectiveTo, filters.search, filters.sortDir, filters.period]);
 
-  const { data, showSkeleton, refreshing, error } = usePanelFetch<TrainingApiResponse>(
+  const { data, showSkeleton, refreshing, error, reload } = usePanelFetch<TrainingApiResponse>(
     apiPath,
     params,
     { debounceMs: 0 },
@@ -477,40 +472,17 @@ export function ManualTrainingPage({
           title="Personel Özeti"
           description="Tarih aralığına göre personel bazında eğitim ve geribildirim adetleri"
         />
-        <div className="border-b border-slate-100 px-5 py-4">
-          <p className="mb-3 text-sm text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <p className="text-sm text-slate-500">
             Seçilen dönem: <span className="font-semibold text-slate-800">{effectivePeriodLabel}</span>
           </p>
-          <div className="grid gap-3 lg:grid-cols-[minmax(220px,320px)_minmax(220px,1fr)_auto] lg:items-end">
-            <MonthYearPicker month={month} year={year} onChange={setMonthYearAndClearRange} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="filter-label">Başlangıç</span>
-                <Input
-                  type="date"
-                  value={filters.customFrom}
-                  onChange={(e) => patchFilters({ customFrom: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                <span className="filter-label">Bitiş</span>
-                <Input
-                  type="date"
-                  value={filters.customTo}
-                  onChange={(e) => patchFilters({ customTo: e.target.value })}
-                />
-              </label>
-            </div>
-            {hasCustomRange ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => patchFilters({ customFrom: "", customTo: "" })}
-              >
-                Aylık göster
-              </Button>
-            ) : null}
-          </div>
+          <DateRangePicker
+            value={range}
+            onChange={(next) => patchFilters(dateRangeFilterPatch(next))}
+            onRefresh={() => void reload({ silent: true, force: true })}
+            refreshing={refreshing}
+            align="end"
+          />
         </div>
         <div className="p-5">
           {showSkeleton ? (
@@ -550,9 +522,6 @@ export function ManualTrainingPage({
       <DataFilters
         search={search}
         onSearchChange={(v) => patchFilters({ search: v })}
-        month={month}
-        year={year}
-        onMonthYearChange={setMonthYearAndClearRange}
         sortBy="date"
         sortDir={sortDir}
         onSortByChange={() => undefined}

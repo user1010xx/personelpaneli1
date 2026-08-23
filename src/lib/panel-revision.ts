@@ -22,12 +22,20 @@ export async function getPanelDataRevision(): Promise<PanelRevisionPayload> {
     return revisionCache.payload;
   }
 
-  const [qualityAgg, trainingAgg, callFeedbackAgg, exampleCallAgg, initiativeAgg, suggestionAgg] =
-    await Promise.all([
+  const [
+    qualityAgg,
+    trainingAgg,
+    callFeedbackAgg,
+    exampleCallAgg,
+    knowledgeDuelAgg,
+    initiativeAgg,
+    suggestionAgg,
+  ] = await Promise.all([
     prisma.qualityScore.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
     prisma.trainingFeedback.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
     prisma.callFeedback.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
     prisma.exampleCall.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
+    prisma.knowledgeDuel.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
     prisma.initiativeWork.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
     prisma.suggestionRequest.aggregate({ _max: { updatedAt: true }, _count: { _all: true } }),
   ]);
@@ -45,6 +53,7 @@ export async function getPanelDataRevision(): Promise<PanelRevisionPayload> {
   addModule("EGITIM", trainingAgg._max.updatedAt, trainingAgg._count._all);
   addModule("CALL_FEEDBACK", callFeedbackAgg._max.updatedAt, callFeedbackAgg._count._all);
   addModule("EXAMPLE_CALL", exampleCallAgg._max.updatedAt, exampleCallAgg._count._all);
+  addModule("KNOWLEDGE_DUEL", knowledgeDuelAgg._max.updatedAt, knowledgeDuelAgg._count._all);
   addModule("INITIATIVE_WORK", initiativeAgg._max.updatedAt, initiativeAgg._count._all);
   addModule("SUGGESTION_REQUEST", suggestionAgg._max.updatedAt, suggestionAgg._count._all);
 

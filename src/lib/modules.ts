@@ -5,6 +5,7 @@ export type ModuleMeta = {
     | "EGITIM"
     | "CALL_FEEDBACK"
     | "EXAMPLE_CALL"
+    | "KNOWLEDGE_DUEL"
     | "USERS"
     | "LOG"
     | "SUGGESTION_REQUEST"
@@ -64,6 +65,14 @@ export const NAV_MODULES: ModuleMeta[] = [
     description: "Örnek çağrı ve motivasyon adetleri",
     source: "manual",
     icon: "sparkles",
+  },
+  {
+    key: "KNOWLEDGE_DUEL",
+    title: "Bilgi Duellosu",
+    href: "/bilgi-duellosu",
+    description: "Personele iletilen sorunun doğru / yanlış sonucu",
+    source: "manual",
+    icon: "swords",
   },
   {
     key: "INITIATIVE_WORK",

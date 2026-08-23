@@ -15,6 +15,7 @@ export const MODULE_TITLES: Record<string, string> = {
   EGITIM: "Eğitim Geribildirim",
   CALL_FEEDBACK: "Çağrı Geribildirim",
   EXAMPLE_CALL: "Örnek Çağrı ve Motivasyon",
+  KNOWLEDGE_DUEL: "Bilgi Duellosu",
   KALITE: "Çağrı Denetleme",
   INITIATIVE_WORK: "İnsiyatif Çalışma",
   SUGGESTION_REQUEST: "Öneri - Talep",

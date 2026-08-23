@@ -81,6 +81,24 @@ export function formatPanelActivityMessage(input: {
       islem = `${personel || "Personel"} örnek çağrı / motivasyon silindi`;
       note = joinNote([personel, str(meta, "recordType") === "MOTIVASYON" ? "Motivasyon" : phone]);
       break;
+    case "BILGI_DUELLOSU_EKLE": {
+      const sonuc = str(meta, "result") === "YANLIS" ? "Yanlış" : "Doğru";
+      islem = `${personel || "Personel"} bilgi duellosu kaydı eklendi`;
+      note = joinNote([personel, sonuc, str(meta, "recordDate")]);
+      break;
+    }
+    case "BILGI_DUELLOSU_GUNCELLE": {
+      const sonuc = str(meta, "result") === "YANLIS" ? "Yanlış" : str(meta, "result") === "DOGRU" ? "Doğru" : "";
+      islem = `${personel || "Personel"} bilgi duellosu güncellendi`;
+      note = joinNote([personel, sonuc]);
+      break;
+    }
+    case "BILGI_DUELLOSU_SIL": {
+      const sonuc = str(meta, "result") === "YANLIS" ? "Yanlış" : str(meta, "result") === "DOGRU" ? "Doğru" : "";
+      islem = `${personel || "Personel"} bilgi duellosu silindi`;
+      note = joinNote([personel, sonuc]);
+      break;
+    }
     case "INSIYATIF_CALISMA_EKLE":
       islem = `${personel || "Personel"} insiyatif çalışma kaydı eklendi`;
       note = joinNote([

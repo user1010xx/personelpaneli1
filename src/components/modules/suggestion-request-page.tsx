@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { usePanelFetch } from "@/hooks/use-panel-fetch";
 import { PageHeader } from "@/components/ui/page-header";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import {
+  dateRangePeriodLabel,
+  resolveDateRange,
+  type DateRangeValue,
+} from "@/lib/date-range-filter";
 
 type Row = {
   id: string;
@@ -48,9 +54,14 @@ export function SuggestionRequestPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; type: "ok" | "error" } | null>(null);
+  const [range, setRange] = useState<DateRangeValue>(() => resolveDateRange("today"));
+  const params = useMemo(() => {
+    const p = new URLSearchParams({ from: range.from, to: range.to });
+    return p;
+  }, [range.from, range.to]);
   const { data, error, showSkeleton, refreshing, reload } = usePanelFetch<Response>(
     "/api/suggestion-requests",
-    new URLSearchParams(),
+    params,
   );
 
   const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
@@ -189,18 +200,22 @@ export function SuggestionRequestPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <div className="panel-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
               <h2 className="font-display text-base font-semibold tracking-tight text-ink-900">
                 Bildirimler
               </h2>
               <p className="text-xs text-slate-500">
-                {refreshing ? "Güncelleniyor..." : `${rows.length} kayıt`}
+                {refreshing ? "Güncelleniyor..." : `${rows.length} kayıt · ${dateRangePeriodLabel(range)}`}
               </p>
             </div>
-            <Button variant="secondary" onClick={() => void reload({ silent: true, force: true })}>
-              Yenile
-            </Button>
+            <DateRangePicker
+              value={range}
+              onChange={setRange}
+              onRefresh={() => void reload({ silent: true, force: true })}
+              refreshing={refreshing}
+              align="end"
+            />
           </div>
           <div className="divide-y divide-slate-100">
             {showSkeleton ? (

@@ -31,7 +31,7 @@ describe("buildTrainingSummary", () => {
 describe("uniquePersonnel", () => {
   it("trims names and removes Turkish-case duplicates", () => {
     expect(
-      uniquePersonnel({ personelNames: ["  İrem  Kaya ", "irem kaya", "Ali Veli"] }),
+      uniquePersonnel({ personelNames: ["  İrem  Kaya: ", "irem kaya", "Ali Veli"] }),
     ).toEqual(["irem kaya", "Ali Veli"]);
   });
 });

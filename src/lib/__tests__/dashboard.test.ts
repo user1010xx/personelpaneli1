@@ -63,6 +63,29 @@ describe("dashboard helpers", () => {
     expect(result.totals.geribildirimAdedi).toBe(3);
     expect(result.totals.egitimAdedi).toBe(1);
   });
+
+  it("merges Turkish case and trailing punctuation variants of a personnel name", () => {
+    const result = buildDashboardResult(
+      {
+        quality: [{ personelName: "İlayda:", score: 100 }],
+        initiative: [{ personelName: "İLAYDA" }],
+        training: [],
+        callFeedback: [],
+        exampleCalls: [],
+        knowledgeDuels: [],
+      },
+      { from: new Date(2026, 8, 1), to: new Date(2026, 8, 30) },
+    );
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      personelName: "İlayda",
+      dinlenenCagriAdedi: 1,
+      ortalamaPuan: 100,
+      insiyatifAdedi: 1,
+    });
+    expect(result.totals.personelAdedi).toBe(1);
+  });
 });
 
 describe("panel cache prefixes", () => {

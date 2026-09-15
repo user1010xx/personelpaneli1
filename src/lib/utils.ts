@@ -5,10 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function normalizePersonelName(value: string) {
+const PERSONEL_NAME_BOUNDARY_MARKS =
+  /^[\s.,:;!?"'“”‘’()[\]{}<>/\\|_+=*•·–—-]+|[\s.,:;!?"'“”‘’()[\]{}<>/\\|_+=*•·–—-]+$/g;
+
+export function displayPersonelName(value: string) {
   return value
     .trim()
-    .replace(/\s+/g, " ")
+    .replace(PERSONEL_NAME_BOUNDARY_MARKS, "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+export function normalizePersonelName(value: string) {
+  return displayPersonelName(value)
     .toLocaleLowerCase("tr-TR")
     .replace(/[çğışöü]/g, (char) => {
       const map: Record<string, string> = {
@@ -21,10 +30,6 @@ export function normalizePersonelName(value: string) {
       };
       return map[char] ?? char;
     });
-}
-
-export function displayPersonelName(value: string) {
-  return value.trim().replace(/\s+/g, " ");
 }
 
 export function preferredPersonnelNames(rows: { personelName: string }[]) {

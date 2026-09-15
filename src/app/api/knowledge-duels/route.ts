@@ -15,14 +15,23 @@ import {
 } from "@/lib/knowledge-duel";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
+import {
+  personelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 
-const createSchema = z.object({
-  personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
-  recordDate: z.string().min(1, "Tarih gerekli"),
-  result: z.enum(["DOGRU", "YANLIS"], {
-    errorMap: () => ({ message: "Sonuç doğru veya yanlış olmalı" }),
-  }),
-});
+const createSchema = z
+  .object({
+    personelName: personelNameSchema.optional(),
+    personelNames: personelNamesSchema,
+    recordDate: z.string().min(1, "Tarih gerekli"),
+    result: z.enum(["DOGRU", "YANLIS"], {
+      errorMap: () => ({ message: "Sonuç doğru veya yanlış olmalı" }),
+    }),
+  })
+  .superRefine(requirePersonnel);
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -79,45 +88,57 @@ export async function POST(request: Request) {
     }
 
     const recordDate = knowledgeDuelRecordDate(parsedDate);
-    const personelKey = knowledgeDuelPersonelKey(body.personelName);
+    const personelNames = uniquePersonnel(body);
+    const personnel = personelNames.map((personelName) => ({
+      personelName,
+      personelKey: knowledgeDuelPersonelKey(personelName),
+    }));
 
     const existing = await prisma.knowledgeDuel.findFirst({
       where: {
-        personelKey,
+        personelKey: { in: personnel.map((item) => item.personelKey) },
         recordDate: knowledgeDuelDayBounds(recordDate),
       },
-      select: { id: true },
+      select: { personelName: true },
     });
     if (existing) {
-      return NextResponse.json({ error: KNOWLEDGE_DUEL_DAILY_LIMIT_MESSAGE }, { status: 409 });
+      return NextResponse.json(
+        { error: `${existing.personelName}: ${KNOWLEDGE_DUEL_DAILY_LIMIT_MESSAGE}` },
+        { status: 409 },
+      );
     }
 
-    const row = await prisma.knowledgeDuel.create({
-      data: {
-        personelName: body.personelName,
-        personelKey,
-        recordDate,
-        result: body.result,
-        createdById: auth.user!.id,
-      },
-    });
+    const rows = await prisma.$transaction(
+      personnel.map(({ personelName, personelKey }) =>
+        prisma.knowledgeDuel.create({
+          data: {
+            personelName,
+            personelKey,
+            recordDate,
+            result: body.result,
+            createdById: auth.user!.id,
+          },
+        }),
+      ),
+    );
 
     logActivity(
       auth.user!,
       "BILGI_DUELLOSU_EKLE",
-      `Bilgi duellosu ekledi: ${body.personelName}.`,
+      `Bilgi duellosu ekledi: ${personelNames.join(", ")}.`,
       {
         moduleKey: "KNOWLEDGE_DUEL",
         metadata: {
-          recordId: row.id,
-          personelName: row.personelName,
-          result: row.result,
+          recordIds: rows.map((row) => row.id),
+          personelNames,
+          recordCount: rows.length,
+          result: body.result,
           recordDate: body.recordDate,
         },
       },
     );
 
-    return jsonResponse({ row }, 201);
+    return jsonResponse({ row: rows[0], rows, count: rows.length }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

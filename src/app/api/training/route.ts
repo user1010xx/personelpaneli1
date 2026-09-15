@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { countTrainingByPeriod, buildTrainingSummary, trainingDateRange } from "@/lib/training";
+import {
+  countTrainingByPeriod,
+  buildTrainingSummary,
+  trainingDateRange,
+} from "@/lib/training";
+import {
+  personelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT, timeStringSchema } from "@/lib/validation";
@@ -93,10 +103,10 @@ export async function GET(request: Request) {
 }
 
 const recordTypeSchema = z.enum(["EGITIM", "GERIBILDIRIM"]);
-
 const createSchema = z
   .object({
-    personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
+    personelName: personelNameSchema.optional(),
+    personelNames: personelNamesSchema,
     recordType: recordTypeSchema.optional(),
     recordDate: z.string().min(1),
     startTime: timeStringSchema,
@@ -105,6 +115,7 @@ const createSchema = z
     trainer: z.string().trim().min(1, "Eğitimi veren zorunludur"),
   })
   .superRefine((data, ctx) => {
+    requirePersonnel(data, ctx);
     const [sh, sm] = data.startTime.split(":").map(Number);
     const [eh, em] = data.endTime.split(":").map(Number);
     if (eh * 60 + em <= sh * 60 + sm) {
@@ -129,35 +140,41 @@ export async function POST(request: Request) {
 
     const recordType = body.recordType ?? "EGITIM";
     const typeLabel = recordType === "GERIBILDIRIM" ? "Geribildirim" : "Eğitim";
-    const row = await prisma.trainingFeedback.create({
-      data: {
-        personelName: body.personelName,
-        recordType,
-        recordDate,
-        startTime: body.startTime,
-        endTime: body.endTime,
-        topic: body.topic,
-        trainer: body.trainer,
-        createdById: auth.user!.id,
-      },
-    });
+    const personelNames = uniquePersonnel(body);
+    const rows = await prisma.$transaction(
+      personelNames.map((personelName) =>
+        prisma.trainingFeedback.create({
+          data: {
+            personelName,
+            recordType,
+            recordDate,
+            startTime: body.startTime,
+            endTime: body.endTime,
+            topic: body.topic,
+            trainer: body.trainer,
+            createdById: auth.user!.id,
+          },
+        }),
+      ),
+    );
     logActivity(
       auth.user!,
       "EGITIM_EKLE",
-      `${typeLabel} kaydı oluşturdu: ${body.personelName} — ${body.topic} (${body.recordDate}, ${body.startTime}-${body.endTime}).`,
+      `${typeLabel} kaydı oluşturdu: ${personelNames.join(", ")} — ${body.topic} (${body.recordDate}, ${body.startTime}-${body.endTime}).`,
       {
         moduleKey: "EGITIM",
         metadata: {
-          recordId: row.id,
-          personelName: row.personelName,
+          recordIds: rows.map((row) => row.id),
+          personelNames,
+          recordCount: rows.length,
           recordType,
-          topic: row.topic,
-          trainer: row.trainer,
+          topic: body.topic,
+          trainer: body.trainer,
           recordDate: body.recordDate,
         },
       },
     );
-    return jsonResponse({ row }, 201);
+    return jsonResponse({ row: rows[0], rows, count: rows.length }, 201);
   } catch (error) {
     console.error("[training POST]", error);
     if (error instanceof z.ZodError) {

@@ -22,6 +22,7 @@ import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { PersonnelFields } from "@/components/ui/personnel-fields";
 import {
   KNOWLEDGE_DUEL_RESULT_LABELS,
   type KnowledgeDuelPeriodCounts,
@@ -57,6 +58,7 @@ type ApiResponse = {
 
 const emptyForm = () => ({
   personelName: "",
+  personelNames: [""],
   recordDate: new Date().toISOString().slice(0, 10),
   result: "DOGRU" as KnowledgeDuelResult,
 });
@@ -185,6 +187,7 @@ export function KnowledgeDuelPage() {
     setEditingId(row.id);
     setForm({
       personelName: row.personelName,
+      personelNames: [row.personelName],
       recordDate: row.recordDate.slice(0, 10),
       result: row.result,
     });
@@ -201,7 +204,12 @@ export function KnowledgeDuelPage() {
         method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          personelNames: editingId
+            ? undefined
+            : form.personelNames.map((name) => name.trim()).filter(Boolean),
+        }),
       },
     );
     const json = await res.json().catch(() => ({}));
@@ -212,7 +220,14 @@ export function KnowledgeDuelPage() {
     }
     closeForm();
     invalidateModuleDataCaches("KNOWLEDGE_DUEL");
-    setMessage({ text: editingId ? "Kayıt güncellendi" : "Kayıt eklendi", type: "ok" });
+    setMessage({
+      text: editingId
+        ? "Kayıt güncellendi"
+        : json.count > 1
+          ? `${json.count} personel için kayıt eklendi`
+          : "Kayıt eklendi",
+      type: "ok",
+    });
   }
 
   async function remove(row: Row) {
@@ -289,15 +304,22 @@ export function KnowledgeDuelPage() {
                       </button>
                     </div>
                     <div className="space-y-3">
-                      <div>
-                        <Label>Personel Adı</Label>
-                        <Input
-                          value={form.personelName}
-                          onChange={(e) => setForm({ ...form, personelName: e.target.value })}
-                          required
-                          autoFocus
+                      {editingId ? (
+                        <div>
+                          <Label>Personel Adı</Label>
+                          <Input
+                            value={form.personelName}
+                            onChange={(e) => setForm({ ...form, personelName: e.target.value })}
+                            required
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <PersonnelFields
+                          names={form.personelNames}
+                          onChange={(personelNames) => setForm({ ...form, personelNames })}
                         />
-                      </div>
+                      )}
                       <div>
                         <Label>Tarih</Label>
                         <Input

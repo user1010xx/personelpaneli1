@@ -26,6 +26,7 @@ import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { PersonnelFields } from "@/components/ui/personnel-fields";
 
 type Row = {
   id: string;
@@ -70,6 +71,7 @@ function formatKayitTarihi(iso: string) {
 
 const emptyForm = (recordType: TrainingRecordType = "EGITIM") => ({
   personelName: "",
+  personelNames: [""],
   recordType,
   recordDate: new Date().toISOString().slice(0, 10),
   startTime: "09:00",
@@ -91,6 +93,7 @@ type FeedbackPageConfig = {
   lockRecordType?: TrainingRecordType;
   hideRecordType?: boolean;
   periodStatsMode?: "split" | "simple";
+  allowMultiplePersonnel?: boolean;
 };
 
 export function ManualTrainingPage({
@@ -106,6 +109,7 @@ export function ManualTrainingPage({
   lockRecordType,
   hideRecordType = false,
   periodStatsMode = "split",
+  allowMultiplePersonnel = false,
 }: FeedbackPageConfig) {
   const [filters, setFilters] = usePersistedPageState(persistKey, {
     search: "",
@@ -215,6 +219,7 @@ export function ManualTrainingPage({
     setEditingId(row.id);
     setForm({
       personelName: row.personelName,
+      personelNames: [row.personelName],
       recordType: row.recordType,
       recordDate: row.recordDate.slice(0, 10),
       startTime: row.startTime,
@@ -235,6 +240,10 @@ export function ManualTrainingPage({
       credentials: "include",
       body: JSON.stringify({
         ...form,
+        personelNames:
+          allowMultiplePersonnel && !editingId
+            ? form.personelNames.map((name) => name.trim()).filter(Boolean)
+            : undefined,
         recordType: lockRecordType ?? form.recordType,
       }),
     });
@@ -243,7 +252,13 @@ export function ManualTrainingPage({
     if (res.ok) {
       const wasEdit = Boolean(editingId);
       closeForm();
-      setMessage(wasEdit ? "Kayıt güncellendi" : "Kayıt kaydedildi");
+      setMessage(
+        wasEdit
+          ? "Kayıt güncellendi"
+          : json.count > 1
+            ? `${json.count} personel için kayıt kaydedildi`
+            : "Kayıt kaydedildi",
+      );
       invalidateModuleDataCaches(cacheModule);
     } else {
       setMessage(json.error ?? "Kayıt kaydedilemedi");
@@ -330,14 +345,21 @@ export function ManualTrainingPage({
                         </select>
                       </Field>
                     )}
-                    <Field label="Personel Adı">
-                      <Input
-                        value={form.personelName}
-                        onChange={(e) => setForm({ ...form, personelName: e.target.value })}
-                        required
-                        autoFocus
+                    {allowMultiplePersonnel && !editingId ? (
+                      <PersonnelFields
+                        names={form.personelNames}
+                        onChange={(personelNames) => setForm({ ...form, personelNames })}
                       />
-                    </Field>
+                    ) : (
+                      <Field label="Personel Adı">
+                        <Input
+                          value={form.personelName}
+                          onChange={(e) => setForm({ ...form, personelName: e.target.value })}
+                          required
+                          autoFocus
+                        />
+                      </Field>
+                    )}
                     <Field label="Tarih">
                       <Input
                         type="date"

@@ -9,14 +9,23 @@ import {
 } from "@/lib/initiative-work";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
+import {
+  personelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 
-const createSchema = z.object({
-  personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
-  recordDate: z.string().min(1, "Çalıştığı tarih gerekli"),
-  callCount: z.number().int().min(0, "Arama adedi 0 veya üzeri olmalı"),
-  talkDuration: z.string().trim().min(1, "Konuşma süresi gerekli"),
-  memberCount: z.number().int().min(0, "Üye adedi 0 veya üzeri olmalı"),
-});
+const createSchema = z
+  .object({
+    personelName: personelNameSchema.optional(),
+    personelNames: personelNamesSchema,
+    recordDate: z.string().min(1, "Çalıştığı tarih gerekli"),
+    callCount: z.number().int().min(0, "Arama adedi 0 veya üzeri olmalı"),
+    talkDuration: z.string().trim().min(1, "Konuşma süresi gerekli"),
+    memberCount: z.number().int().min(0, "Üye adedi 0 veya üzeri olmalı"),
+  })
+  .superRefine(requirePersonnel);
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -66,34 +75,40 @@ export async function POST(request: Request) {
       );
     }
 
-    const row = await prisma.initiativeWork.create({
-      data: {
-        personelName: body.personelName,
-        recordDate,
-        callCount: body.callCount,
-        talkDurationSeconds,
-        memberCount: body.memberCount,
-        createdById: auth.user!.id,
-      },
-    });
+    const personelNames = uniquePersonnel(body);
+    const rows = await prisma.$transaction(
+      personelNames.map((personelName) =>
+        prisma.initiativeWork.create({
+          data: {
+            personelName,
+            recordDate,
+            callCount: body.callCount,
+            talkDurationSeconds,
+            memberCount: body.memberCount,
+            createdById: auth.user!.id,
+          },
+        }),
+      ),
+    );
 
     logActivity(
       auth.user!,
       "INSIYATIF_CALISMA_EKLE",
-      `İnsiyatif çalışma kaydı ekledi: ${body.personelName} (${body.recordDate}).`,
+      `İnsiyatif çalışma kaydı ekledi: ${personelNames.join(", ")} (${body.recordDate}).`,
       {
         moduleKey: "INITIATIVE_WORK",
         metadata: {
-          recordId: row.id,
-          personelName: row.personelName,
+          recordIds: rows.map((row) => row.id),
+          personelNames,
+          recordCount: rows.length,
           recordDate: body.recordDate,
-          callCount: row.callCount,
-          memberCount: row.memberCount,
+          callCount: body.callCount,
+          memberCount: body.memberCount,
         },
       },
     );
 
-    return jsonResponse({ row }, 201);
+    return jsonResponse({ row: rows[0], rows, count: rows.length }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

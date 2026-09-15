@@ -6,6 +6,12 @@ import { averageScore, buildQualitySummary, qualityDateRange } from "@/lib/quali
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
+import {
+  personelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 
 const MAX_PAGE_SIZE = 5_000;
 
@@ -106,13 +112,16 @@ function pickScoreAverage(stat: { averages: { key: string; value: number }[] }) 
   return stat.averages.find((a) => a.key === "puan")?.value ?? 0;
 }
 
-const createSchema = z.object({
-  personelName: z.string().trim().min(2),
-  phone: z.string().trim().min(5),
-  score: z.number().min(0).max(100),
-  note: z.string().optional(),
-  recordDate: z.string().min(1),
-});
+const createSchema = z
+  .object({
+    personelName: personelNameSchema.optional(),
+    personelNames: personelNamesSchema,
+    phone: z.string().trim().min(5),
+    score: z.number().min(0).max(100),
+    note: z.string().optional(),
+    recordDate: z.string().min(1),
+  })
+  .superRefine(requirePersonnel);
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
@@ -125,32 +134,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
     }
 
-    const row = await prisma.qualityScore.create({
-      data: {
-        personelName: body.personelName,
-        phone: body.phone,
-        score: body.score,
-        note: body.note?.trim() || null,
-        recordDate,
-        createdById: auth.user!.id,
-      },
-    });
+    const personelNames = uniquePersonnel(body);
+    const rows = await prisma.$transaction(
+      personelNames.map((personelName) =>
+        prisma.qualityScore.create({
+          data: {
+            personelName,
+            phone: body.phone,
+            score: body.score,
+            note: body.note?.trim() || null,
+            recordDate,
+            createdById: auth.user!.id,
+          },
+        }),
+      ),
+    );
     logActivity(
       auth.user!,
       "CAGRI_DENETLEME_EKLE",
-      `Çağrı denetlemesi ekledi: ${body.personelName} — puan ${body.score} (${body.recordDate}).`,
+      `Çağrı denetlemesi ekledi: ${personelNames.join(", ")} — puan ${body.score} (${body.recordDate}).`,
       {
         moduleKey: "KALITE",
         metadata: {
-          recordId: row.id,
-          personelName: row.personelName,
-          phone: row.phone,
-          score: row.score,
-          note: row.note,
+          recordIds: rows.map((row) => row.id),
+          personelNames,
+          recordCount: rows.length,
+          phone: body.phone,
+          score: body.score,
+          note: body.note?.trim() || null,
         },
       },
     );
-    return jsonResponse({ row }, 201);
+    return jsonResponse({ row: rows[0], rows, count: rows.length }, 201);
   } catch (error) {
     console.error("[quality POST]", error);
     if (error instanceof z.ZodError) {

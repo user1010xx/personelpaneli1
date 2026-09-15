@@ -10,15 +10,23 @@ import {
 } from "@/lib/example-call";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
+import {
+  personelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 
 const createSchema = z
   .object({
     recordType: z.enum(["ORNEK_CAGRI", "MOTIVASYON"]),
-    personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
+    personelName: personelNameSchema.optional(),
+    personelNames: personelNamesSchema,
     recordDate: z.string().min(1, "Tarih gerekli"),
     phone: z.string().trim().optional(),
   })
   .superRefine((data, ctx) => {
+    requirePersonnel(data, ctx);
     if (data.recordType === "ORNEK_CAGRI" && (!data.phone || data.phone.length < 5)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -88,33 +96,39 @@ export async function POST(request: Request) {
     }
 
     const phone = body.recordType === "ORNEK_CAGRI" ? body.phone ?? "" : "";
-    const row = await prisma.exampleCall.create({
-      data: {
-        personelName: body.personelName,
-        recordType: body.recordType,
-        phone,
-        recordDate,
-        createdById: auth.user!.id,
-      },
-    });
+    const personelNames = uniquePersonnel(body);
+    const rows = await prisma.$transaction(
+      personelNames.map((personelName) =>
+        prisma.exampleCall.create({
+          data: {
+            personelName,
+            recordType: body.recordType,
+            phone,
+            recordDate,
+            createdById: auth.user!.id,
+          },
+        }),
+      ),
+    );
 
     logActivity(
       auth.user!,
       "ORNEK_CAGRI_EKLE",
-      `${body.recordType === "MOTIVASYON" ? "Motivasyon" : "Örnek çağrı"} ekledi: ${body.personelName}.`,
+      `${body.recordType === "MOTIVASYON" ? "Motivasyon" : "Örnek çağrı"} ekledi: ${personelNames.join(", ")}.`,
       {
         moduleKey: "EXAMPLE_CALL",
         metadata: {
-          recordId: row.id,
-          personelName: row.personelName,
-          recordType: row.recordType,
-          phone: row.phone,
+          recordIds: rows.map((row) => row.id),
+          personelNames,
+          recordCount: rows.length,
+          recordType: body.recordType,
+          phone,
           recordDate: body.recordDate,
         },
       },
     );
 
-    return jsonResponse({ row }, 201);
+    return jsonResponse({ row: rows[0], rows, count: rows.length }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

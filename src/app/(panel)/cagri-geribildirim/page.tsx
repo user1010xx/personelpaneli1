@@ -14,6 +14,7 @@ export default function CagriGeribildirimPage() {
       lockRecordType="GERIBILDIRIM"
       hideRecordType
       periodStatsMode="simple"
+      allowMultiplePersonnel
     />
   );
 }

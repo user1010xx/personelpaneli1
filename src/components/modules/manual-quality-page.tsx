@@ -23,6 +23,7 @@ import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { PersonnelFields } from "@/components/ui/personnel-fields";
 
 type Row = {
   id: string;
@@ -70,6 +71,7 @@ function formatKayitTarihi(iso: string) {
 
 const emptyForm = () => ({
   personelName: "",
+  personelNames: [""],
   phone: "",
   score: "",
   note: "",
@@ -180,6 +182,7 @@ export function ManualQualityPage() {
     setEditingId(row.id);
     setForm({
       personelName: row.personelName,
+      personelNames: [row.personelName],
       phone: row.phone,
       score: String(row.score),
       note: row.note ?? "",
@@ -194,6 +197,9 @@ export function ManualQualityPage() {
     setSaving(true);
     const payload = {
       personelName: form.personelName,
+      personelNames: editingId
+        ? undefined
+        : form.personelNames.map((name) => name.trim()).filter(Boolean),
       phone: form.phone,
       score: Number(form.score),
       note: form.note,
@@ -210,7 +216,13 @@ export function ManualQualityPage() {
     if (res.ok) {
       const wasEdit = Boolean(editingId);
       closeForm();
-      setMessage(wasEdit ? "Kayıt güncellendi" : "Kayıt kaydedildi");
+      setMessage(
+        wasEdit
+          ? "Kayıt güncellendi"
+          : json.count > 1
+            ? `${json.count} personel için kayıt kaydedildi`
+            : "Kayıt kaydedildi",
+      );
       invalidateModuleDataCaches("KALITE");
     } else {
       setMessage(json.error ?? "Kayıt kaydedilemedi");
@@ -280,14 +292,21 @@ export function ManualQualityPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <Field label="Personel Adı">
-                      <Input
-                        value={form.personelName}
-                        onChange={(e) => setForm({ ...form, personelName: e.target.value })}
-                        required
-                        autoFocus
+                    {editingId ? (
+                      <Field label="Personel Adı">
+                        <Input
+                          value={form.personelName}
+                          onChange={(e) => setForm({ ...form, personelName: e.target.value })}
+                          required
+                          autoFocus
+                        />
+                      </Field>
+                    ) : (
+                      <PersonnelFields
+                        names={form.personelNames}
+                        onChange={(personelNames) => setForm({ ...form, personelNames })}
                       />
-                    </Field>
+                    )}
                     <Field label="Telefon">
                       <Input
                         value={form.phone}

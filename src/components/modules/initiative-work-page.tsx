@@ -21,6 +21,7 @@ import { invalidatePrefixes } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { PersonnelFields } from "@/components/ui/personnel-fields";
 
 type Row = {
   id: string;
@@ -46,6 +47,7 @@ type ApiResponse = {
 
 const emptyForm = () => ({
   personelName: "",
+  personelNames: [""],
   recordDate: new Date().toISOString().slice(0, 10),
   callCount: "",
   talkDuration: "",
@@ -177,6 +179,7 @@ export function InitiativeWorkPage() {
     setEditingId(row.id);
     setForm({
       personelName: row.personelName,
+      personelNames: [row.personelName],
       recordDate: row.recordDate.slice(0, 10),
       callCount: String(row.callCount),
       talkDuration: formatWorkDuration(row.talkDurationSeconds),
@@ -197,6 +200,9 @@ export function InitiativeWorkPage() {
         credentials: "include",
         body: JSON.stringify({
           personelName: form.personelName,
+          personelNames: editingId
+            ? undefined
+            : form.personelNames.map((name) => name.trim()).filter(Boolean),
           recordDate: form.recordDate,
           callCount: Number(form.callCount),
           talkDuration: form.talkDuration,
@@ -212,7 +218,14 @@ export function InitiativeWorkPage() {
     }
     closeForm();
     invalidatePrefixes(["/api/initiative-work"]);
-    setMessage({ text: editingId ? "Kayıt güncellendi" : "Kayıt eklendi", type: "ok" });
+    setMessage({
+      text: editingId
+        ? "Kayıt güncellendi"
+        : json.count > 1
+          ? `${json.count} personel için kayıt eklendi`
+          : "Kayıt eklendi",
+      type: "ok",
+    });
   }
 
   async function remove(row: Row) {
@@ -287,14 +300,21 @@ export function InitiativeWorkPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <Field label="Personel Adı">
-                      <Input
-                        value={form.personelName}
-                        onChange={(e) => setForm({ ...form, personelName: e.target.value })}
-                        required
-                        autoFocus
+                    {editingId ? (
+                      <Field label="Personel Adı">
+                        <Input
+                          value={form.personelName}
+                          onChange={(e) => setForm({ ...form, personelName: e.target.value })}
+                          required
+                          autoFocus
+                        />
+                      </Field>
+                    ) : (
+                      <PersonnelFields
+                        names={form.personelNames}
+                        onChange={(personelNames) => setForm({ ...form, personelNames })}
                       />
-                    </Field>
+                    )}
                     <Field label="Çalıştığı Tarih">
                       <Input
                         type="date"

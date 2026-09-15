@@ -22,6 +22,7 @@ import { invalidateModuleDataCaches } from "@/lib/panel-cache";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PersonCard } from "@/components/ui/person-card";
 import { PageHeader, SectionHeader } from "@/components/ui/page-header";
+import { PersonnelFields } from "@/components/ui/personnel-fields";
 import {
   EXAMPLE_CALL_TYPE_LABELS,
   type ExampleCallPeriodCounts,
@@ -58,6 +59,7 @@ type ApiResponse = {
 const emptyForm = () => ({
   recordType: "ORNEK_CAGRI" as ExampleCallType,
   personelName: "",
+  personelNames: [""],
   recordDate: new Date().toISOString().slice(0, 10),
   phone: "",
 });
@@ -186,6 +188,7 @@ export function ExampleCallPage() {
     setForm({
       recordType: row.recordType ?? "ORNEK_CAGRI",
       personelName: row.personelName,
+      personelNames: [row.personelName],
       recordDate: row.recordDate.slice(0, 10),
       phone: row.phone,
     });
@@ -200,7 +203,12 @@ export function ExampleCallPage() {
       method: editingId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        personelNames: editingId
+          ? undefined
+          : form.personelNames.map((name) => name.trim()).filter(Boolean),
+      }),
     });
     const json = await res.json().catch(() => ({}));
     setSaving(false);
@@ -210,7 +218,14 @@ export function ExampleCallPage() {
     }
     closeForm();
     invalidateModuleDataCaches("EXAMPLE_CALL");
-    setMessage({ text: editingId ? "Kayıt güncellendi" : "Kayıt eklendi", type: "ok" });
+    setMessage({
+      text: editingId
+        ? "Kayıt güncellendi"
+        : json.count > 1
+          ? `${json.count} personel için kayıt eklendi`
+          : "Kayıt eklendi",
+      type: "ok",
+    });
   }
 
   async function remove(row: Row) {
@@ -305,15 +320,22 @@ export function ExampleCallPage() {
                           <option value="MOTIVASYON">Motivasyon</option>
                         </select>
                       </div>
-                      <div>
-                        <Label>Personel Adı</Label>
-                        <Input
-                          value={form.personelName}
-                          onChange={(e) => setForm({ ...form, personelName: e.target.value })}
-                          required
-                          autoFocus
+                      {editingId ? (
+                        <div>
+                          <Label>Personel Adı</Label>
+                          <Input
+                            value={form.personelName}
+                            onChange={(e) => setForm({ ...form, personelName: e.target.value })}
+                            required
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <PersonnelFields
+                          names={form.personelNames}
+                          onChange={(personelNames) => setForm({ ...form, personelNames })}
                         />
-                      </div>
+                      )}
                       <div>
                         <Label>Tarih</Label>
                         <Input

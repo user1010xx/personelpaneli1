@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { countTrainingByPeriod, buildTrainingSummary, trainingDateRange } from "@/lib/training";
+import {
+  personelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT, timeStringSchema } from "@/lib/validation";
@@ -93,7 +99,8 @@ const recordTypeSchema = z.enum(["EGITIM", "GERIBILDIRIM"]);
 
 const createSchema = z
   .object({
-    personelName: z.string().trim().min(2, "Personel adı en az 2 karakter olmalı"),
+    personelName: personelNameSchema.optional(),
+    personelNames: personelNamesSchema,
     recordType: recordTypeSchema.optional(),
     recordDate: z.string().min(1),
     startTime: timeStringSchema,
@@ -102,6 +109,7 @@ const createSchema = z
     trainer: z.string().trim().min(1, "Geribildirimi veren zorunludur"),
   })
   .superRefine((data, ctx) => {
+    requirePersonnel(data, ctx);
     const [sh, sm] = data.startTime.split(":").map(Number);
     const [eh, em] = data.endTime.split(":").map(Number);
     if (eh * 60 + em <= sh * 60 + sm) {
@@ -124,34 +132,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
     }
 
-    const row = await prisma.callFeedback.create({
-      data: {
-        personelName: body.personelName,
-        recordType: "GERIBILDIRIM",
-        recordDate,
-        startTime: body.startTime,
-        endTime: body.endTime,
-        topic: body.topic,
-        trainer: body.trainer,
-        createdById: auth.user!.id,
-      },
-    });
+    const personelNames = uniquePersonnel(body);
+    const rows = await prisma.$transaction(
+      personelNames.map((personelName) =>
+        prisma.callFeedback.create({
+          data: {
+            personelName,
+            recordType: "GERIBILDIRIM",
+            recordDate,
+            startTime: body.startTime,
+            endTime: body.endTime,
+            topic: body.topic,
+            trainer: body.trainer,
+            createdById: auth.user!.id,
+          },
+        }),
+      ),
+    );
     logActivity(
       auth.user!,
       "CAGRI_GERIBILDIRIM_EKLE",
-      `Çağrı geribildirimi ekledi: ${body.personelName} — ${body.topic} (${body.recordDate}).`,
+      `Çağrı geribildirimi ekledi: ${personelNames.join(", ")} — ${body.topic} (${body.recordDate}).`,
       {
         moduleKey: "CALL_FEEDBACK",
         metadata: {
-          recordId: row.id,
-          personelName: row.personelName,
-          topic: row.topic,
-          trainer: row.trainer,
+          recordIds: rows.map((row) => row.id),
+          personelNames,
+          recordCount: rows.length,
+          topic: body.topic,
+          trainer: body.trainer,
           recordDate: body.recordDate,
         },
       },
     );
-    return jsonResponse({ row }, 201);
+    return jsonResponse({ row: rows[0], rows, count: rows.length }, 201);
   } catch (error) {
     console.error("[call-feedback POST]", error);
     if (error instanceof z.ZodError) {

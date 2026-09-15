@@ -1,5 +1,5 @@
 import { endOfDay, startOfDay } from "date-fns";
-import { normalizePersonelName } from "@/lib/utils";
+import { normalizePersonelName, preferredPersonnelNames } from "@/lib/utils";
 
 export type QualitySummaryRow = {
   personelName: string;
@@ -18,10 +18,11 @@ export function buildQualitySummary(
   rows: { personelName: string; score: number }[],
 ): QualitySummaryRow[] {
   const map = new Map<string, { personelName: string; adet: number; total: number }>();
+  const displayNames = preferredPersonnelNames(rows);
 
   for (const row of rows) {
     const key = normalizePersonelName(row.personelName);
-    const display = row.personelName.trim();
+    const display = displayNames.get(key) ?? row.personelName.trim();
     if (!map.has(key)) {
       map.set(key, { personelName: display, adet: 0, total: 0 });
     }

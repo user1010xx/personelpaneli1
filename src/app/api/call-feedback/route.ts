@@ -6,6 +6,7 @@ import {
   personelNameSchema,
   personelNamesSchema,
   requirePersonnel,
+  resolveCanonicalPersonnelNames,
   uniquePersonnel,
 } from "@/lib/personnel-batch";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
     }
 
-    const personelNames = uniquePersonnel(body);
+    const personelNames = await resolveCanonicalPersonnelNames(uniquePersonnel(body));
     const rows = await prisma.$transaction(
       personelNames.map((personelName) =>
         prisma.callFeedback.create({

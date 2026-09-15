@@ -14,6 +14,7 @@ import {
   personelNameSchema,
   personelNamesSchema,
   requirePersonnel,
+  resolveCanonicalPersonnelNames,
   uniquePersonnel,
 } from "@/lib/personnel-batch";
 
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
     }
 
     const phone = body.recordType === "ORNEK_CAGRI" ? body.phone ?? "" : "";
-    const personelNames = uniquePersonnel(body);
+    const personelNames = await resolveCanonicalPersonnelNames(uniquePersonnel(body));
     const rows = await prisma.$transaction(
       personelNames.map((personelName) =>
         prisma.exampleCall.create({

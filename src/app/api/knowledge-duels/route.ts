@@ -19,6 +19,7 @@ import {
   personelNameSchema,
   personelNamesSchema,
   requirePersonnel,
+  resolveCanonicalPersonnelNames,
   uniquePersonnel,
 } from "@/lib/personnel-batch";
 
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     }
 
     const recordDate = knowledgeDuelRecordDate(parsedDate);
-    const personelNames = uniquePersonnel(body);
+    const personelNames = await resolveCanonicalPersonnelNames(uniquePersonnel(body));
     const personnel = personelNames.map((personelName) => ({
       personelName,
       personelKey: knowledgeDuelPersonelKey(personelName),

@@ -13,6 +13,7 @@ import {
   personelNameSchema,
   personelNamesSchema,
   requirePersonnel,
+  resolveCanonicalPersonnelNames,
   uniquePersonnel,
 } from "@/lib/personnel-batch";
 
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const personelNames = uniquePersonnel(body);
+    const personelNames = await resolveCanonicalPersonnelNames(uniquePersonnel(body));
     const rows = await prisma.$transaction(
       personelNames.map((personelName) =>
         prisma.initiativeWork.create({

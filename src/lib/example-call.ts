@@ -1,7 +1,7 @@
 import { endOfDay, startOfDay } from "date-fns";
 import type { Period } from "@/lib/date-ranges";
 import { getPeriodRange } from "@/lib/date-ranges";
-import { normalizePersonelName } from "@/lib/utils";
+import { normalizePersonelName, preferredPersonnelNames } from "@/lib/utils";
 
 export type ExampleCallType = "ORNEK_CAGRI" | "MOTIVASYON";
 
@@ -34,12 +34,13 @@ export function buildExampleCallSummary(
   rows: { personelName: string; recordType?: ExampleCallType }[],
 ): ExampleCallSummaryRow[] {
   const map = new Map<string, ExampleCallSummaryRow>();
+  const displayNames = preferredPersonnelNames(rows);
 
   for (const row of rows) {
     const key = normalizePersonelName(row.personelName);
     if (!map.has(key)) {
       map.set(key, {
-        personelName: row.personelName.trim(),
+        personelName: displayNames.get(key) ?? row.personelName.trim(),
         ornekCagriAdedi: 0,
         motivasyonAdedi: 0,
       });

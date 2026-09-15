@@ -2,7 +2,7 @@ import { endOfDay, startOfDay } from "date-fns";
 import type { TrainingRecordType } from "@prisma/client";
 import type { Period } from "@/lib/date-ranges";
 import { getPeriodRange } from "@/lib/date-ranges";
-import { normalizePersonelName } from "@/lib/utils";
+import { normalizePersonelName, preferredPersonnelNames } from "@/lib/utils";
 
 export type TrainingPeriodCounts = {
   egitim: number;
@@ -21,10 +21,11 @@ export function buildTrainingSummary(
   rows: { personelName: string; recordType: TrainingRecordType }[],
 ): TrainingSummaryRow[] {
   const map = new Map<string, TrainingSummaryRow>();
+  const displayNames = preferredPersonnelNames(rows);
 
   for (const row of rows) {
     const key = normalizePersonelName(row.personelName);
-    const display = row.personelName.trim();
+    const display = displayNames.get(key) ?? row.personelName.trim();
     if (!map.has(key)) {
       map.set(key, { personelName: display, egitimAdedi: 0, geribildirimAdedi: 0 });
     }

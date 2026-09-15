@@ -1,5 +1,5 @@
 import { endOfDay, startOfDay } from "date-fns";
-import { normalizePersonelName } from "@/lib/utils";
+import { normalizePersonelName, preferredPersonnelNames } from "@/lib/utils";
 
 export type InitiativeWorkSummaryRow = {
   personelName: string;
@@ -17,11 +17,15 @@ export function buildInitiativeWorkSummary(
   rows: { personelName: string }[],
 ): InitiativeWorkSummaryRow[] {
   const map = new Map<string, InitiativeWorkSummaryRow>();
+  const displayNames = preferredPersonnelNames(rows);
 
   for (const row of rows) {
     const key = normalizePersonelName(row.personelName);
     if (!map.has(key)) {
-      map.set(key, { personelName: row.personelName.trim(), calismaAdedi: 0 });
+      map.set(key, {
+        personelName: displayNames.get(key) ?? row.personelName.trim(),
+        calismaAdedi: 0,
+      });
     }
     map.get(key)!.calismaAdedi += 1;
   }

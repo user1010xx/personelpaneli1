@@ -1,6 +1,6 @@
 import { endOfDay, startOfDay } from "date-fns";
 import { prisma } from "@/lib/db";
-import { displayPersonelName, normalizePersonelName } from "@/lib/utils";
+import { displayPersonelName, normalizePersonelName, preferredPersonnelNames } from "@/lib/utils";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
 
 export const DASHBOARD_ROW_LIMIT = AGGREGATE_ROW_LIMIT;
@@ -142,7 +142,14 @@ export function buildDashboardResult(
   params: { from: Date; to: Date; search?: string; truncated?: boolean },
 ): DashboardResult {
   const search = params.search?.trim().toLocaleLowerCase("tr-TR") ?? "";
-  const displayNames = new Map<string, string>();
+  const displayNames = preferredPersonnelNames([
+    ...sources.quality,
+    ...sources.initiative,
+    ...sources.training,
+    ...sources.callFeedback,
+    ...sources.exampleCalls,
+    ...sources.knowledgeDuels,
+  ]);
   const buckets = new Map<string, MetricBucket>();
 
   const register = (rawName: string) => {

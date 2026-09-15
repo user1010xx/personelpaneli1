@@ -10,6 +10,7 @@ import {
   personelNameSchema,
   personelNamesSchema,
   requirePersonnel,
+  resolveCanonicalPersonnelNames,
   uniquePersonnel,
 } from "@/lib/personnel-batch";
 import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-helpers";
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
 
     const recordType = body.recordType ?? "EGITIM";
     const typeLabel = recordType === "GERIBILDIRIM" ? "Geribildirim" : "Eğitim";
-    const personelNames = uniquePersonnel(body);
+    const personelNames = await resolveCanonicalPersonnelNames(uniquePersonnel(body));
     const rows = await prisma.$transaction(
       personelNames.map((personelName) =>
         prisma.trainingFeedback.create({

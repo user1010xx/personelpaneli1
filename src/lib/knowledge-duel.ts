@@ -1,7 +1,7 @@
 import { endOfDay, startOfDay } from "date-fns";
 import type { Period } from "@/lib/date-ranges";
 import { getPeriodRange } from "@/lib/date-ranges";
-import { displayPersonelName, normalizePersonelName } from "@/lib/utils";
+import { displayPersonelName, normalizePersonelName, preferredPersonnelNames } from "@/lib/utils";
 
 export type KnowledgeDuelResult = "DOGRU" | "YANLIS";
 
@@ -62,12 +62,13 @@ export function buildKnowledgeDuelSummary(
   rows: { personelName: string; result: KnowledgeDuelResult }[],
 ): KnowledgeDuelSummaryRow[] {
   const map = new Map<string, KnowledgeDuelSummaryRow>();
+  const displayNames = preferredPersonnelNames(rows);
 
   for (const row of rows) {
     const key = normalizePersonelName(row.personelName);
     if (!map.has(key)) {
       map.set(key, {
-        personelName: displayPersonelName(row.personelName),
+        personelName: displayNames.get(key) ?? displayPersonelName(row.personelName),
         dogruAdedi: 0,
         yanlisAdedi: 0,
         toplam: 0,

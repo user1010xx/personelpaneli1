@@ -59,8 +59,7 @@ export default function LoginPage() {
     }
 
     window.sessionStorage.setItem(WELCOME_TRANSITION_KEY, "1");
-    router.push(withWelcomeTransition(safeNextPath(searchParams.get("next"))));
-    router.refresh();
+    router.replace(withWelcomeTransition(safeNextPath(searchParams.get("next"))));
   }
 
   return (

@@ -7,7 +7,7 @@ import {
   trainingDateRange,
 } from "@/lib/training";
 import {
-  personelNameSchema,
+  optionalPersonelNameSchema,
   personelNamesSchema,
   requirePersonnel,
   resolveCanonicalPersonnelNames,
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
 const recordTypeSchema = z.enum(["EGITIM", "GERIBILDIRIM"]);
 const createSchema = z
   .object({
-    personelName: personelNameSchema.optional(),
+    personelName: optionalPersonelNameSchema,
     personelNames: personelNamesSchema,
     recordType: recordTypeSchema.optional(),
     recordDate: z.string().min(1),

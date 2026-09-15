@@ -11,7 +11,7 @@ import {
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
 import {
-  personelNameSchema,
+  optionalPersonelNameSchema,
   personelNamesSchema,
   requirePersonnel,
   resolveCanonicalPersonnelNames,
@@ -21,7 +21,7 @@ import {
 const createSchema = z
   .object({
     recordType: z.enum(["ORNEK_CAGRI", "MOTIVASYON"]),
-    personelName: personelNameSchema.optional(),
+    personelName: optionalPersonelNameSchema,
     personelNames: personelNamesSchema,
     recordDate: z.string().min(1, "Tarih gerekli"),
     phone: z.string().trim().optional(),

@@ -7,6 +7,11 @@ export const personelNameSchema = z
   .trim()
   .min(2, "Personel adı en az 2 karakter olmalı");
 
+export const optionalPersonelNameSchema = z.preprocess(
+  (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+  personelNameSchema.optional(),
+);
+
 export const personelNamesSchema = z.array(personelNameSchema).min(1).max(50).optional();
 
 export function requirePersonnel(

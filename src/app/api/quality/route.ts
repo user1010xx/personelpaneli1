@@ -7,7 +7,7 @@ import { jsonResponse, parseDate, parsePeriod, requireApiUser } from "@/lib/api-
 import { logActivity } from "@/lib/activity-log";
 import { AGGREGATE_ROW_LIMIT } from "@/lib/validation";
 import {
-  personelNameSchema,
+  optionalPersonelNameSchema,
   personelNamesSchema,
   requirePersonnel,
   resolveCanonicalPersonnelNames,
@@ -115,7 +115,7 @@ function pickScoreAverage(stat: { averages: { key: string; value: number }[] }) 
 
 const createSchema = z
   .object({
-    personelName: personelNameSchema.optional(),
+    personelName: optionalPersonelNameSchema,
     personelNames: personelNamesSchema,
     phone: z.string().trim().min(5),
     score: z.number().min(0).max(100),

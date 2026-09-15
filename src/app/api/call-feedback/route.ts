@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { countTrainingByPeriod, buildTrainingSummary, trainingDateRange } from "@/lib/training";
 import {
-  personelNameSchema,
+  optionalPersonelNameSchema,
   personelNamesSchema,
   requirePersonnel,
   resolveCanonicalPersonnelNames,
@@ -100,7 +100,7 @@ const recordTypeSchema = z.enum(["EGITIM", "GERIBILDIRIM"]);
 
 const createSchema = z
   .object({
-    personelName: personelNameSchema.optional(),
+    personelName: optionalPersonelNameSchema,
     personelNames: personelNamesSchema,
     recordType: recordTypeSchema.optional(),
     recordDate: z.string().min(1),

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { buildTrainingSummary } from "@/lib/training";
-import { buildCanonicalPersonnelMap, uniquePersonnel } from "@/lib/personnel-batch";
+import {
+  buildCanonicalPersonnelMap,
+  optionalPersonelNameSchema,
+  personelNamesSchema,
+  requirePersonnel,
+  uniquePersonnel,
+} from "@/lib/personnel-batch";
 
 describe("buildTrainingSummary", () => {
   it("aggregates by personel and record type", () => {
@@ -33,6 +40,28 @@ describe("uniquePersonnel", () => {
     expect(
       uniquePersonnel({ personelNames: ["  İrem  Kaya: ", "irem kaya", "Ali Veli"] }),
     ).toEqual(["irem kaya", "Ali Veli"]);
+  });
+});
+
+describe("personnel validation", () => {
+  const schema = z
+    .object({
+      personelName: optionalPersonelNameSchema,
+      personelNames: personelNamesSchema,
+    })
+    .superRefine(requirePersonnel);
+
+  it("accepts one personnel from the batch field when the legacy field is blank", () => {
+    expect(schema.parse({ personelName: "", personelNames: ["ENDER"] })).toEqual({
+      personelName: undefined,
+      personelNames: ["ENDER"],
+    });
+  });
+
+  it("still rejects a one-character personnel name", () => {
+    expect(() => schema.parse({ personelName: "", personelNames: ["E"] })).toThrow(
+      "Personel adı en az 2 karakter olmalı",
+    );
   });
 });
 

@@ -81,9 +81,100 @@
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 34%);
   }
 
+  .welcome-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: #050505;
+    animation: welcome-screen-exit 2.8s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+
+  .welcome-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(238, 118, 34, 0.1), transparent 34%),
+      linear-gradient(to right, transparent 49.9%, rgba(255, 255, 255, 0.035) 50%, transparent 50.1%);
+  }
+
+  .welcome-screen__content {
+    position: relative;
+    display: flex;
+    max-width: min(90vw, 1100px);
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: welcome-content 2.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .welcome-screen__title {
+    color: rgba(255, 255, 255, 0.92);
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 5vw, 4.5rem);
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
+  }
+
+  .welcome-screen__name {
+    color: #f28b35;
+    font-style: italic;
+    text-shadow: 0 12px 48px rgba(242, 139, 53, 0.22);
+  }
+
+  .welcome-screen__wish {
+    margin-top: 1.15rem;
+    color: rgba(255, 255, 255, 0.74);
+    font-family: var(--font-sans);
+    font-size: clamp(0.9rem, 2vw, 1.25rem);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+
+  .welcome-screen__line {
+    width: min(11rem, 42vw);
+    height: 2px;
+    margin-top: 1.5rem;
+    transform-origin: center;
+    background: linear-gradient(90deg, transparent, #f28b35, transparent);
+    animation: welcome-line 2s ease-out forwards;
+  }
+
+  @keyframes welcome-content {
+    0% { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+    22%, 68% { opacity: 1; transform: translateY(0); filter: blur(0); }
+    100% { opacity: 0; transform: translateY(-10px); filter: blur(5px); }
+  }
+
+  @keyframes welcome-line {
+    0% { opacity: 0; transform: scaleX(0); }
+    35%, 72% { opacity: 0.9; transform: scaleX(1); }
+    100% { opacity: 0; transform: scaleX(0.55); }
+  }
+
+  @keyframes welcome-screen-exit {
+    0%, 82% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .login-card-3d {
       transform: none !important;
+    }
+
+    .welcome-screen,
+    .welcome-screen__content,
+    .welcome-screen__line {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
     }
   }
 

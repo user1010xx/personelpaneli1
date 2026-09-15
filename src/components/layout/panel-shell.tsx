@@ -1,18 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Menu } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import type { SessionUser } from "@/types/auth";
 import { Sidebar } from "@/components/layout/sidebar";
+import { WelcomeTransition } from "@/components/layout/welcome-transition";
+import { WELCOME_TRANSITION_KEY } from "@/lib/safe-redirect";
 import { usePanelRevisionSync } from "@/hooks/use-panel-revision-sync";
 import { useIdleLogout } from "@/hooks/use-idle-logout";
 import { formatAppDateTimeShort } from "@/lib/timezone";
 
 export function PanelShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+  const searchParams = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [showWelcome, setShowWelcome] = useState(searchParams.get("welcome") === "1");
   usePanelRevisionSync();
   useIdleLogout();
+
+  const completeWelcome = useCallback(() => {
+    setShowWelcome(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("welcome");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  useEffect(() => {
+    if (!showWelcome) return;
+
+    const wasJustAuthenticated = window.sessionStorage.getItem(WELCOME_TRANSITION_KEY) === "1";
+    window.sessionStorage.removeItem(WELCOME_TRANSITION_KEY);
+    if (!wasJustAuthenticated) completeWelcome();
+  }, [completeWelcome, showWelcome]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
@@ -35,6 +55,9 @@ export function PanelShell({ user, children }: { user: SessionUser; children: Re
 
   return (
     <div className="flex min-h-screen bg-[var(--surface)]">
+      {showWelcome ? (
+        <WelcomeTransition userName={user.name} onComplete={completeWelcome} />
+      ) : null}
       {navOpen ? (
         <button
           type="button"

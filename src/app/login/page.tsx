@@ -4,7 +4,11 @@ import { FormEvent, useCallback, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, ShieldCheck } from "lucide-react";
 import { PanelLogo } from "@/components/ui/panel-logo";
-import { safeNextPath } from "@/lib/safe-redirect";
+import {
+  safeNextPath,
+  WELCOME_TRANSITION_KEY,
+  withWelcomeTransition,
+} from "@/lib/safe-redirect";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,7 +58,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push(safeNextPath(searchParams.get("next")));
+    window.sessionStorage.setItem(WELCOME_TRANSITION_KEY, "1");
+    router.push(withWelcomeTransition(safeNextPath(searchParams.get("next"))));
     router.refresh();
   }
 
